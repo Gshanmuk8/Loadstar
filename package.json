@@ -1,5 +1,5 @@
 {
-  "name": "@gshanmuk8/lodestar",
+  "name": "@gshanmukha/lodestar",
   "version": "0.1.0",
   "description": "Know what your AI actually did. A tamper-evident execution history for AI coding agent sessions.",
   "type": "module",
@@ -29,6 +29,7 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
+    "prepublishOnly": "npm run build",
     "dev": "tsx src/cli/index.ts",
     "test": "vitest run",
     "test:watch": "vitest",

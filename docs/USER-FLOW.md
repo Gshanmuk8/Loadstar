@@ -44,7 +44,7 @@ That table is the product spec. The rest of this document is implementation deta
 ## 2. Install
 
 ```bash
-npm install -g @gshanmuk8/lodestar
+npm install -g @gshanmukha/lodestar
 ```
 
 (The npm name is scoped — bare `lodestar` was taken on the registry long before this

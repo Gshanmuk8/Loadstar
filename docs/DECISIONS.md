@@ -2498,9 +2498,9 @@ publish the CLI under a scoped npm name. Bare `lodestar` is taken on the registr
 
 - **Source of truth:** `github.com/Gshanmuk8/Loadstar`, repo root = this directory.
   The `package.json` `repository`/`homepage`/`bugs` fields point there.
-- **npm name:** `@gshanmuk8/lodestar` with `publishConfig.access: public`. **The
+- **npm name:** `@gshanmukha/lodestar` with `publishConfig.access: public`. **The
   executable stays `lodestar`** — a scoped package's `bin` name is unscoped, so
-  `npm i -g @gshanmuk8/lodestar` installs the `lodestar` command unchanged. The scope
+  `npm i -g @gshanmukha/lodestar` installs the `lodestar` command unchanged. The scope
   must match the npm account that publishes; changing scope later is a rename event
   for install docs only, never for the record format.
 - **Version: `0.1.0`** in `package.json` AND `src/core/version.ts` (the one version

@@ -288,7 +288,7 @@ a chore.
 ## The loop
 
 ```bash
-npm install -g @gshanmuk8/lodestar
+npm install -g @gshanmukha/lodestar
 cd my-project
 lodestar init
 lodestar claude      # work exactly as before

@@ -203,7 +203,7 @@ factual voice. Every fact links to its evidence. If there are none, say so plain
 **Discovery.** A post, a teammate's shared report, an AI-coding community. The pitch
 answers "why do I care" in the first sentence.
 
-**Install.** `npm install -g @gshanmuk8/lodestar` (the command is `lodestar`; the npm
+**Install.** `npm install -g @gshanmukha/lodestar` (the command is `lodestar`; the npm
 name is scoped because bare `lodestar` was already taken). No account, no sign-up, no
 API key.
 **This is the single most important product decision in V0: zero permission required
