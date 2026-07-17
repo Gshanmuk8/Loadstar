@@ -1,0 +1,233 @@
+{
+  "comment": "Golden vectors for GRAPH-SPEC Part A §4 — remote normalization and identity resolution. Committed BEFORE the resolution implementation existed (V1-VALIDATION §10 readiness item). Changing expected values is a spec change and needs a DECISIONS entry. Resolution scenarios pin the F2 conservative defaults: false-split over false-merge, always.",
+  "normalization": [
+    { "name": "https plain", "input": "https://github.com/acme/payments", "expected": "github.com/acme/payments" },
+    { "name": "https with .git", "input": "https://github.com/acme/payments.git", "expected": "github.com/acme/payments" },
+    { "name": "https trailing slash", "input": "https://github.com/acme/payments/", "expected": "github.com/acme/payments" },
+    { "name": "https default port dropped", "input": "https://github.com:443/acme/payments.git", "expected": "github.com/acme/payments" },
+    { "name": "https non-default port kept", "input": "https://git.corp.example:8443/acme/payments.git", "expected": "git.corp.example:8443/acme/payments" },
+    { "name": "http default port dropped", "input": "http://git.corp.example:80/acme/payments", "expected": "git.corp.example/acme/payments" },
+    { "name": "credentials stripped", "input": "https://alice:s3cr3t@github.com/acme/payments.git", "expected": "github.com/acme/payments" },
+    { "name": "token userinfo stripped", "input": "https://x-access-token:ghp_abc123@github.com/acme/payments.git", "expected": "github.com/acme/payments" },
+    { "name": "scp-like ssh", "input": "git@github.com:acme/payments.git", "expected": "github.com/acme/payments" },
+    { "name": "scp-like without user", "input": "github.com:acme/payments.git", "expected": "github.com/acme/payments" },
+    { "name": "ssh scheme with user", "input": "ssh://git@github.com/acme/payments.git", "expected": "github.com/acme/payments" },
+    { "name": "ssh scheme default port dropped", "input": "ssh://git@github.com:22/acme/payments.git", "expected": "github.com/acme/payments" },
+    { "name": "ssh scheme non-default port kept", "input": "ssh://git@git.corp.example:2222/acme/payments.git", "expected": "git.corp.example:2222/acme/payments" },
+    { "name": "git protocol default port dropped", "input": "git://github.com:9418/acme/payments.git", "expected": "github.com/acme/payments" },
+    { "name": "host lowercased", "input": "https://GitHub.COM/acme/payments.git", "expected": "github.com/acme/payments" },
+    { "name": "path case preserved", "input": "https://github.com/Acme/Payments.git", "expected": "github.com/Acme/Payments" },
+    { "name": "only one .git stripped", "input": "https://github.com/acme/payments.git.git", "expected": "github.com/acme/payments.git" },
+    { "name": "nested group path (gitlab style)", "input": "git@gitlab.com:group/subgroup/repo.git", "expected": "gitlab.com/group/subgroup/repo" },
+    { "name": "whitespace trimmed", "input": "  https://github.com/acme/payments.git  ", "expected": "github.com/acme/payments" },
+    { "name": "file url is not a remote signal", "input": "file:///home/dev/payments", "expected": null },
+    { "name": "absolute unix path is not a remote signal", "input": "/srv/git/payments.git", "expected": null },
+    { "name": "windows path is not a remote signal", "input": "C:\\git\\payments", "expected": null },
+    { "name": "relative path is not a remote signal", "input": "../payments", "expected": null },
+    { "name": "empty is not a remote signal", "input": "", "expected": null }
+  ],
+  "resolution": [
+    {
+      "name": "one repo, two machines, two agents — origin rule merges",
+      "records": [
+        { "recordId": "r-a1", "sessionId": "s-a1", "machineId": "m1", "cwd": "/home/a/payments", "gitRemotes": [{ "name": "origin", "url": "git@github.com:acme/payments.git" }], "gitRootCommits": ["aaaa000000000000000000000000000000000001"] },
+        { "recordId": "r-a2", "sessionId": "s-a2", "machineId": "m2", "cwd": "C:\\work\\payments", "gitRemotes": [{ "name": "origin", "url": "https://github.com/acme/payments.git" }], "gitRootCommits": ["aaaa000000000000000000000000000000000001"] }
+      ],
+      "expectedGroups": [
+        { "displayName": "github.com/acme/payments", "basis": "origin", "members": ["r-a1", "r-a2"] }
+      ],
+      "expectedCandidates": []
+    },
+    {
+      "name": "fork — shared root never merges across different origins; lineage surfaced",
+      "records": [
+        { "recordId": "r-a1", "sessionId": "s-a1", "machineId": "m1", "cwd": "/a", "gitRemotes": [{ "name": "origin", "url": "https://github.com/acme/payments" }], "gitRootCommits": ["aaaa000000000000000000000000000000000001"] },
+        { "recordId": "r-b1", "sessionId": "s-b1", "machineId": "m3", "cwd": "/b", "gitRemotes": [{ "name": "origin", "url": "https://github.com/bob/payments" }], "gitRootCommits": ["aaaa000000000000000000000000000000000001"] }
+      ],
+      "expectedGroups": [
+        { "displayName": "github.com/acme/payments", "basis": "origin", "members": ["r-a1"] },
+        { "displayName": "github.com/bob/payments", "basis": "origin", "members": ["r-b1"] }
+      ],
+      "expectedCandidates": [
+        { "kind": "lineage", "between": ["github.com/acme/payments", "github.com/bob/payments"], "via": "root aaaa000000000000000000000000000000000001" }
+      ]
+    },
+    {
+      "name": "fork with upstream remote — shared non-origin remote never merges; candidate surfaced",
+      "records": [
+        { "recordId": "r-a1", "sessionId": "s-a1", "machineId": "m1", "cwd": "/a", "gitRemotes": [{ "name": "origin", "url": "https://github.com/acme/payments" }], "gitRootCommits": ["aaaa000000000000000000000000000000000001"] },
+        { "recordId": "r-b2", "sessionId": "s-b2", "machineId": "m3", "cwd": "/b", "gitRemotes": [{ "name": "origin", "url": "https://github.com/bob/payments" }, { "name": "upstream", "url": "https://github.com/acme/payments" }], "gitRootCommits": ["aaaa000000000000000000000000000000000001"] }
+      ],
+      "expectedGroups": [
+        { "displayName": "github.com/acme/payments", "basis": "origin", "members": ["r-a1"] },
+        { "displayName": "github.com/bob/payments", "basis": "origin", "members": ["r-b2"] }
+      ],
+      "expectedCandidates": [
+        { "kind": "lineage", "between": ["github.com/acme/payments", "github.com/bob/payments"], "via": "root aaaa000000000000000000000000000000000001" },
+        { "kind": "shared-remote", "between": ["github.com/acme/payments", "github.com/bob/payments"], "via": "remote github.com/acme/payments" }
+      ]
+    },
+    {
+      "name": "repository rename — indistinguishable from fork by design; split plus lineage candidate (one link fixes it)",
+      "records": [
+        { "recordId": "r-old", "sessionId": "s-old", "machineId": "m1", "cwd": "/p", "gitRemotes": [{ "name": "origin", "url": "https://github.com/acme/payments" }], "gitRootCommits": ["aaaa000000000000000000000000000000000001"] },
+        { "recordId": "r-new", "sessionId": "s-new", "machineId": "m1", "cwd": "/p", "gitRemotes": [{ "name": "origin", "url": "https://github.com/acme/billing" }], "gitRootCommits": ["aaaa000000000000000000000000000000000001"] }
+      ],
+      "expectedGroups": [
+        { "displayName": "github.com/acme/billing", "basis": "origin", "members": ["r-new"] },
+        { "displayName": "github.com/acme/payments", "basis": "origin", "members": ["r-old"] }
+      ],
+      "expectedCandidates": [
+        { "kind": "lineage", "between": ["github.com/acme/billing", "github.com/acme/payments"], "via": "root aaaa000000000000000000000000000000000001" }
+      ]
+    },
+    {
+      "name": "offline clone — origin-less record with a root held by exactly one origin group merges into it",
+      "records": [
+        { "recordId": "r-a1", "sessionId": "s-a1", "machineId": "m1", "cwd": "/a", "gitRemotes": [{ "name": "origin", "url": "https://github.com/acme/payments" }], "gitRootCommits": ["aaaa000000000000000000000000000000000001"] },
+        { "recordId": "r-off", "sessionId": "s-off", "machineId": "m9", "cwd": "/mnt/usb/payments", "gitRemotes": [], "gitRootCommits": ["aaaa000000000000000000000000000000000001"] }
+      ],
+      "expectedGroups": [
+        { "displayName": "github.com/acme/payments", "basis": "origin", "members": ["r-a1", "r-off"] }
+      ],
+      "expectedCandidates": []
+    },
+    {
+      "name": "mirror as two clones — different origins stay split even when one record lists both remotes; shared-remote candidate surfaced",
+      "records": [
+        { "recordId": "r-gh", "sessionId": "s-gh", "machineId": "m1", "cwd": "/gh", "gitRemotes": [{ "name": "origin", "url": "https://github.com/acme/payments" }, { "name": "backup", "url": "https://gitlab.com/acme/payments" }], "gitRootCommits": ["aaaa000000000000000000000000000000000001"] },
+        { "recordId": "r-gl", "sessionId": "s-gl", "machineId": "m2", "cwd": "/gl", "gitRemotes": [{ "name": "origin", "url": "https://gitlab.com/acme/payments" }], "gitRootCommits": ["aaaa000000000000000000000000000000000001"] }
+      ],
+      "expectedGroups": [
+        { "displayName": "github.com/acme/payments", "basis": "origin", "members": ["r-gh"] },
+        { "displayName": "gitlab.com/acme/payments", "basis": "origin", "members": ["r-gl"] }
+      ],
+      "expectedCandidates": [
+        { "kind": "lineage", "between": ["github.com/acme/payments", "gitlab.com/acme/payments"], "via": "root aaaa000000000000000000000000000000000001" },
+        { "kind": "shared-remote", "between": ["github.com/acme/payments", "gitlab.com/acme/payments"], "via": "remote gitlab.com/acme/payments" }
+      ]
+    },
+    {
+      "name": "origin-less records sharing a root with no origin group anywhere merge together (root basis)",
+      "records": [
+        { "recordId": "r-f1", "sessionId": "s-f1", "machineId": "m1", "cwd": "/f1", "gitRemotes": [], "gitRootCommits": ["bbbb000000000000000000000000000000000002", "cccc000000000000000000000000000000000003"] },
+        { "recordId": "r-g1", "sessionId": "s-g1", "machineId": "m2", "cwd": "/g1", "gitRemotes": [], "gitRootCommits": ["cccc000000000000000000000000000000000003"] }
+      ],
+      "expectedGroups": [
+        { "displayName": "root:bbbb00000000", "basis": "root", "members": ["r-f1", "r-g1"] }
+      ],
+      "expectedCandidates": []
+    },
+    {
+      "name": "ambiguous root — origin-less holder of a root shared by two origin groups stays separate, flagged",
+      "records": [
+        { "recordId": "r-a1", "sessionId": "s-a1", "machineId": "m1", "cwd": "/a", "gitRemotes": [{ "name": "origin", "url": "https://github.com/acme/payments" }], "gitRootCommits": ["aaaa000000000000000000000000000000000001"] },
+        { "recordId": "r-b1", "sessionId": "s-b1", "machineId": "m2", "cwd": "/b", "gitRemotes": [{ "name": "origin", "url": "https://github.com/bob/payments" }], "gitRootCommits": ["aaaa000000000000000000000000000000000001"] },
+        { "recordId": "r-x1", "sessionId": "s-x1", "machineId": "m9", "cwd": "/x", "gitRemotes": [], "gitRootCommits": ["aaaa000000000000000000000000000000000001"] }
+      ],
+      "expectedGroups": [
+        { "displayName": "github.com/acme/payments", "basis": "origin", "members": ["r-a1"] },
+        { "displayName": "github.com/bob/payments", "basis": "origin", "members": ["r-b1"] },
+        { "displayName": "root:aaaa00000000", "basis": "root", "members": ["r-x1"], "ambiguous": true }
+      ],
+      "expectedCandidates": [
+        { "kind": "lineage", "between": ["github.com/acme/payments", "github.com/bob/payments"], "via": "root aaaa000000000000000000000000000000000001" }
+      ]
+    },
+    {
+      "name": "no git at all — path rule groups same machine+cwd, splits across machines",
+      "records": [
+        { "recordId": "r-p1", "sessionId": "s-p1", "machineId": "m1", "cwd": "/home/dev/scripts", "gitRemotes": [], "gitRootCommits": [] },
+        { "recordId": "r-p2", "sessionId": "s-p2", "machineId": "m1", "cwd": "/home/dev/scripts", "gitRemotes": [], "gitRootCommits": [] },
+        { "recordId": "r-p3", "sessionId": "s-p3", "machineId": "m2", "cwd": "/home/dev/scripts", "gitRemotes": [], "gitRootCommits": [] }
+      ],
+      "expectedGroupCount": 2,
+      "expectedGroups": [],
+      "expectedCandidates": [],
+      "expectedTogether": [["r-p1", "r-p2"]],
+      "expectedApart": [["r-p1", "r-p3"]]
+    },
+    {
+      "name": "path signal never bridges stronger groups — same cwd reused for two different clones",
+      "records": [
+        { "recordId": "r-c1", "sessionId": "s-c1", "machineId": "m1", "cwd": "/work/proj", "gitRemotes": [{ "name": "origin", "url": "https://github.com/acme/one" }], "gitRootCommits": ["dddd000000000000000000000000000000000004"] },
+        { "recordId": "r-c2", "sessionId": "s-c2", "machineId": "m1", "cwd": "/work/proj", "gitRemotes": [{ "name": "origin", "url": "https://github.com/acme/two" }], "gitRootCommits": ["eeee000000000000000000000000000000000005"] }
+      ],
+      "expectedGroups": [
+        { "displayName": "github.com/acme/one", "basis": "origin", "members": ["r-c1"] },
+        { "displayName": "github.com/acme/two", "basis": "origin", "members": ["r-c2"] }
+      ],
+      "expectedCandidates": []
+    },
+    {
+      "name": "history rewrite — same origin, root changed by filter-repo; origin rule carries it, no conflict flag from a single root-bearing side",
+      "records": [
+        { "recordId": "r-h1", "sessionId": "s-h1", "machineId": "m1", "cwd": "/p", "gitRemotes": [{ "name": "origin", "url": "https://github.com/acme/payments" }], "gitRootCommits": ["aaaa000000000000000000000000000000000001"] },
+        { "recordId": "r-h2", "sessionId": "s-h2", "machineId": "m1", "cwd": "/p", "gitRemotes": [{ "name": "origin", "url": "https://github.com/acme/payments" }], "gitRootCommits": ["ffff000000000000000000000000000000000009"] }
+      ],
+      "expectedGroups": [
+        { "displayName": "github.com/acme/payments", "basis": "origin", "members": ["r-h1", "r-h2"], "rootConflict": true }
+      ],
+      "expectedCandidates": []
+    },
+    {
+      "name": "reused origin URL — two disjoint histories under one remote are grouped by the origin claim and flagged, never silently trusted",
+      "records": [
+        { "recordId": "r-u1", "sessionId": "s-u1", "machineId": "m1", "cwd": "/old", "gitRemotes": [{ "name": "origin", "url": "https://github.com/acme/app" }], "gitRootCommits": ["1111000000000000000000000000000000000001", "2222000000000000000000000000000000000002"] },
+        { "recordId": "r-u2", "sessionId": "s-u2", "machineId": "m2", "cwd": "/new", "gitRemotes": [{ "name": "origin", "url": "https://github.com/acme/app" }], "gitRootCommits": ["3333000000000000000000000000000000000003"] }
+      ],
+      "expectedGroups": [
+        { "displayName": "github.com/acme/app", "basis": "origin", "members": ["r-u1", "r-u2"], "rootConflict": true }
+      ],
+      "expectedCandidates": []
+    },
+    {
+      "name": "monorepo with subtree roots — overlapping root sets stay one connected history, NOT flagged",
+      "records": [
+        { "recordId": "r-m1", "sessionId": "s-m1", "machineId": "m1", "cwd": "/mono", "gitRemotes": [{ "name": "origin", "url": "https://github.com/acme/mono" }], "gitRootCommits": ["1111000000000000000000000000000000000001", "2222000000000000000000000000000000000002"] },
+        { "recordId": "r-m2", "sessionId": "s-m2", "machineId": "m2", "cwd": "/mono", "gitRemotes": [{ "name": "origin", "url": "https://github.com/acme/mono" }], "gitRootCommits": ["2222000000000000000000000000000000000002", "3333000000000000000000000000000000000003"] }
+      ],
+      "expectedGroups": [
+        { "displayName": "github.com/acme/mono", "basis": "origin", "members": ["r-m1", "r-m2"] }
+      ],
+      "expectedCandidates": []
+    },
+    {
+      "name": "shallow clone — no roots observable; origin rule still joins it to its repo",
+      "records": [
+        { "recordId": "r-a1", "sessionId": "s-a1", "machineId": "m1", "cwd": "/a", "gitRemotes": [{ "name": "origin", "url": "https://github.com/acme/payments" }], "gitRootCommits": ["aaaa000000000000000000000000000000000001"] },
+        { "recordId": "r-sh", "sessionId": "s-sh", "machineId": "m7", "cwd": "/ci/build", "gitRemotes": [{ "name": "origin", "url": "https://github.com/acme/payments" }], "gitRootCommits": [] }
+      ],
+      "expectedGroups": [
+        { "displayName": "github.com/acme/payments", "basis": "origin", "members": ["r-a1", "r-sh"] }
+      ],
+      "expectedCandidates": []
+    },
+    {
+      "name": "origin changed over time — a bridge record carrying the old URL as a non-origin remote surfaces candidates, never merges (F2)",
+      "records": [
+        { "recordId": "r-o1", "sessionId": "s-o1", "machineId": "m1", "cwd": "/p", "gitRemotes": [{ "name": "origin", "url": "https://old.example/acme/app" }], "gitRootCommits": ["aaaa000000000000000000000000000000000001"] },
+        { "recordId": "r-o2", "sessionId": "s-o2", "machineId": "m1", "cwd": "/p", "gitRemotes": [{ "name": "origin", "url": "https://new.example/acme/app" }, { "name": "old", "url": "https://old.example/acme/app" }], "gitRootCommits": ["aaaa000000000000000000000000000000000001"] }
+      ],
+      "expectedGroups": [
+        { "displayName": "new.example/acme/app", "basis": "origin", "members": ["r-o2"] },
+        { "displayName": "old.example/acme/app", "basis": "origin", "members": ["r-o1"] }
+      ],
+      "expectedCandidates": [
+        { "kind": "lineage", "between": ["new.example/acme/app", "old.example/acme/app"], "via": "root aaaa000000000000000000000000000000000001" },
+        { "kind": "shared-remote", "between": ["new.example/acme/app", "old.example/acme/app"], "via": "remote old.example/acme/app" }
+      ]
+    },
+    {
+      "name": "session key discipline — two records of the same session count once in membership",
+      "records": [
+        { "recordId": "r-v1", "sessionId": "s-same", "chainHead": "1111000000000000000000000000000000000000000000000000000000000011", "machineId": "m1", "cwd": "/a", "gitRemotes": [{ "name": "origin", "url": "https://github.com/acme/payments" }], "gitRootCommits": [] },
+        { "recordId": "r-v2", "sessionId": "s-same", "chainHead": "1111000000000000000000000000000000000000000000000000000000000011", "machineId": "m1", "cwd": "/a", "gitRemotes": [{ "name": "origin", "url": "https://github.com/acme/payments" }], "gitRootCommits": [] }
+      ],
+      "expectedGroups": [
+        { "displayName": "github.com/acme/payments", "basis": "origin", "members": ["r-v1", "r-v2"], "sessionCount": 1 }
+      ],
+      "expectedCandidates": []
+    }
+  ]
+}

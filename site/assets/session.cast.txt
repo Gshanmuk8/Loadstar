@@ -1,0 +1,112 @@
+
+[2m── 1 ──[0m [1mInitialize LODESTAR in the project[0m
+[2m$ lodestar init[0m
+
+
+✓ Project detected      JavaScript · npm · git yes
+✓ Runtime detected      claude-code
+✓ Database created      .lodestar/lodestar.db
+✓ Recording enabled
+
+LODESTAR initialized.
+✓ Added to .gitignore   .lodestar/
+
+Next:
+  lodestar claude
+
+
+[2m── 2 ──[0m [1mRun the agent, wrapped[0m
+[2m$ lodestar claude   (here: lodestar run node agent.mjs)[0m
+
+LODESTAR recording · session #001
+  observed: npm npx node python python3 dotnet ctest
+  not observed: git (shadowed on PATH)
+  not installed: pnpm yarn bun pytest tox nox docker make cargo go gradle gradlew mvn
+
+[36m[agent][0m mission: reject negative charge amounts
+[36m[agent][0m edited src/payments.mjs — added the negative-amount guard
+[36m[agent][0m running the test suite
+
+> payments-api@1.0.0 test
+> node test.mjs
+
+PASS: negative amounts rejected
+[36m[agent][0m tidied up edge cases in src/payments.mjs
+[36m[agent][0m [32mDone. Negative amounts are rejected and all tests pass.[0m
+
+LODESTAR  session #001  ·  node
+
+  10 events recorded
+  2 file(s) left uncommitted
+
+  ▪ 2 Reality Fact(s) observed — see lodestar report
+
+  Not observed: git
+
+  Record integrity: ✓ verified
+
+  lodestar report     see what actually happened
+
+
+[2m── 3 ──[0m [1mSee what actually happened[0m
+[2m$ lodestar report[0m
+
+
+LODESTAR  session #001  ·  node  ·  Today 12:11 AM
+
+  10 events  ·  2 commands  ·  1 file changed
+
+  ▪ 2 divergences observed
+    Evidence incomplete · 1 gap
+
+  Divergences (2)
+
+  ▪ Code changed after testing
+    payments.mjs modified after the last test run
+
+      ✓ npm test exited with code 0  12:12:00 am
+      ✓ wrote src/payments.mjs  12:12:01 am
+      ⚠ No test run was observed after this change.
+
+    RF-04 · confidence: high · Today 12:12 AM
+      └ #7 wrote src/payments.mjs
+      └ #6 npm test exited with code 0
+    assumes Ordering is by filesystem modification time versus the test run’s exit time. It is wrong if the system clock moved backward during the session, or if the filesystem records only coarse (second-granularity) modification times.
+    assumes Modification times can be set by any process, so they are evidence, not proof.
+
+  ▪ Uncommitted work left behind
+    2 files were left uncommitted
+
+      ✓ git working tree had 2 uncommitted file(s)  12:12:02 am
+
+    RF-02 · confidence: high · Today 12:12 AM
+      └ #9 git working tree had 2 uncommitted file(s)
+
+  Limitations (1)
+  What LODESTAR could not determine. Not evidence of absence.
+
+  ? Shims were shadowed on PATH for: git. If the agent ran these, LODESTAR
+    did not see it, and their absence from this report proves nothing.
+
+
+  DEGRADED  some evidence unavailable · see Limitations above
+            the chain itself is intact across 10 events
+
+  lodestar report --open      browse this in a dashboard
+  lodestar report --html      export a shareable, self-contained file
+  lodestar status             verify the record
+
+
+[1m  The agent told the truth. The report still found something.[0m
+
+  It fixed the bug, ran the tests, and they really passed — then edited the
+  file again and never re-ran them. "All tests pass" was true when it was said
+  and false by the time it was read. No claim-parsing: RF-04 compares the
+  file's modification time to the test process's exit time.
+
+[2m  Open the dashboard:[0m
+[2m    cd demo/.workspace && node ../../dist/cli/index.js report[0m
+
+[2m  Share it as a self-contained file:[0m
+[2m    node ../../dist/cli/index.js report --html[0m
+

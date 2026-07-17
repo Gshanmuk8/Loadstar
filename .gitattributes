@@ -1,0 +1,6 @@
+# Normalize all text to LF in the repository, whatever the contributor's OS or
+# autocrlf setting — the emitted CLI's shebang line must reach Unix machines as LF.
+* text=auto
+
+# Binary assets, never normalized.
+*.pdf binary

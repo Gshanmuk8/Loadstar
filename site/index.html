@@ -1,0 +1,380 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LODESTAR — Know what your AI actually did</title>
+<meta name="description" content="Your agent said the tests passed. It was telling the truth. LODESTAR is a tamper-evident execution history for AI coding agent sessions — it reads the evidence, not the summary.">
+
+<!--
+  ---------------------------------------------------------------------------
+  EVERY SCREENSHOT ON THIS PAGE IS A REAL REPORT — `node demo/capture.mjs`
+  ---------------------------------------------------------------------------
+
+  Not a mockup, not a Figma comp, not a "representative" image touched up to look better
+  than the product. They are photographs of a report LODESTAR produced from a real session:
+  a real git repo, a real agent, a real `npm test`, a real exit code.
+
+  This is a trust company. The first thing a visitor sees cannot be the first thing we
+  shaded. If a screenshot looks wrong, the fix belongs in `src/report/html.ts`.
+
+  The terminal below is real output too, from `site/assets/session.cast.txt`. It is
+  animated, not re-typed: the text is what the CLI printed.
+-->
+
+<style>
+:root {
+  --bg: #08090c;
+  --surface: #0f1218;
+  --raised: #151a22;
+  --line: #1f2531;
+  --text: #e9edf4;
+  --muted: #98a3b6;
+  --dim: #66707f;
+  --ok: #3fb950;
+  --warn: #e3b341;
+  --bad: #f85149;
+  --accent: #6ea8fe;
+  --mono: ui-monospace, "SF Mono", SFMono-Regular, "Cascadia Code", Menlo, Consolas, monospace;
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", Inter, Roboto, sans-serif;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font-family: var(--sans); font-size: 16px; line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+.wrap { max-width: 940px; margin: 0 auto; padding: 0 24px; }
+.mono { font-family: var(--mono); }
+
+/* --- nav ------------------------------------------------------------------ */
+nav {
+  position: sticky; top: 0; z-index: 20;
+  background: color-mix(in srgb, var(--bg) 85%, transparent);
+  backdrop-filter: blur(14px); border-bottom: 1px solid var(--line);
+}
+nav .wrap { display: flex; align-items: center; gap: 16px; height: 58px; }
+.brand { font-weight: 700; letter-spacing: .2em; font-size: 13px; }
+nav .links { margin-left: auto; display: flex; gap: 22px; font-size: 14px; color: var(--muted); }
+nav .links a { color: var(--muted); }
+nav .links a:hover { color: var(--text); text-decoration: none; }
+@media (max-width: 700px) { nav .links a.hide-sm { display: none; } }
+
+/* --- hero ----------------------------------------------------------------- */
+.hero { padding: 88px 0 56px; text-align: center; }
+.eyebrow {
+  display: inline-flex; align-items: center; gap: 8px; font-size: 12px; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--warn); background: rgba(227,179,65,.09);
+  border: 1px solid rgba(227,179,65,.25); border-radius: 999px; padding: 5px 14px; margin-bottom: 26px;
+}
+h1 {
+  font-size: clamp(34px, 5.6vw, 58px); line-height: 1.08; letter-spacing: -.035em;
+  font-weight: 680; margin: 0 0 22px;
+}
+h1 .fade { color: var(--dim); }
+.sub { font-size: clamp(17px, 2.2vw, 20px); color: var(--muted); max-width: 660px; margin: 0 auto; }
+.sub b { color: var(--text); font-weight: 600; }
+.cta { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 34px; }
+.btn {
+  display: inline-flex; align-items: center; gap: 9px; border-radius: 9px;
+  padding: 11px 20px; font-size: 14.5px; font-weight: 600; border: 1px solid var(--line);
+  background: var(--raised); color: var(--text);
+}
+.btn:hover { text-decoration: none; border-color: #33405a; background: #1a212c; }
+.btn.primary { background: var(--text); color: #0b0d12; border-color: var(--text); }
+.btn.primary:hover { background: #fff; }
+.cmd { font-family: var(--mono); font-size: 14px; color: var(--muted); }
+.cmd .p { color: var(--dim); }
+
+/* --- narration: the whole pitch, in six lines ----------------------------- */
+.beats { margin: 96px 0; }
+.beat {
+  font-size: clamp(20px, 3vw, 27px); line-height: 1.45; letter-spacing: -.02em;
+  color: var(--dim); padding: 9px 0 9px 26px; border-left: 2px solid var(--line);
+  transition: color .3s;
+}
+.beat.hit { color: var(--text); border-left-color: var(--warn); }
+.beat.punch { color: var(--warn); font-weight: 600; }
+.beat.turn { color: var(--text); font-weight: 650; border-left-color: var(--accent); }
+
+/* --- sections ------------------------------------------------------------- */
+section { padding: 72px 0; border-top: 1px solid var(--line); }
+h2 { font-size: clamp(24px, 3.4vw, 32px); letter-spacing: -.025em; margin: 0 0 14px; font-weight: 660; }
+.lede { color: var(--muted); font-size: 17px; max-width: 660px; margin: 0 0 34px; }
+.kicker {
+  font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--accent);
+  font-weight: 600; margin-bottom: 12px;
+}
+
+/* --- terminal replay ------------------------------------------------------ */
+.term {
+  background: #0b0e13; border: 1px solid var(--line); border-radius: 12px;
+  overflow: hidden; box-shadow: 0 24px 70px -30px rgba(0,0,0,.9);
+  text-align: left;
+}
+.term-bar {
+  display: flex; align-items: center; gap: 7px; padding: 11px 14px;
+  border-bottom: 1px solid var(--line); background: #10141b;
+}
+.term-bar i { width: 11px; height: 11px; border-radius: 50%; background: #2b323e; }
+.term-bar span { margin-left: 8px; font-size: 12px; color: var(--dim); font-family: var(--mono); }
+.term pre {
+  margin: 0; padding: 18px 20px 22px; font-family: var(--mono);
+  font-size: 12.5px; line-height: 1.75; overflow-x: auto; min-height: 340px;
+}
+/* Inline, not block: the newlines in the <pre> source already break the lines, so a
+   block-level span renders a SECOND break and every line comes out double-spaced. */
+.term .ln { opacity: 0; animation: reveal .01s forwards; }
+@keyframes reveal { to { opacity: 1; } }
+.term .p  { color: var(--dim); }
+.term .ag { color: var(--accent); }
+.term .ok { color: var(--ok); }
+.term .wn { color: var(--warn); }
+.term .dm { color: var(--dim); }
+.term .bd { color: var(--text); font-weight: 600; }
+@media (prefers-reduced-motion: reduce) { .term .ln { animation: none; opacity: 1; } }
+
+/* --- shots ---------------------------------------------------------------- */
+figure { margin: 0; }
+.shot {
+  width: 100%; border-radius: 12px; border: 1px solid var(--line); display: block;
+  box-shadow: 0 24px 70px -30px rgba(0,0,0,.9);
+}
+figcaption { color: var(--dim); font-size: 13.5px; margin-top: 14px; }
+
+/* --- grid ----------------------------------------------------------------- */
+.grid { display: grid; gap: 16px; grid-template-columns: repeat(3, 1fr); margin-top: 8px; }
+@media (max-width: 780px) { .grid { grid-template-columns: 1fr; } }
+.card {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 20px;
+}
+.card h3 { margin: 0 0 8px; font-size: 15px; font-weight: 640; }
+.card p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.6; }
+.card .n {
+  font-family: var(--mono); font-size: 11px; color: var(--dim); display: block; margin-bottom: 10px;
+}
+
+/* --- honesty -------------------------------------------------------------- */
+.honest { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 28px; }
+.honest ul { margin: 0; padding: 0; list-style: none; }
+.honest li {
+  display: flex; gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--line);
+  color: var(--muted); font-size: 14.5px; line-height: 1.6;
+}
+.honest li:last-child { border-bottom: 0; }
+.honest li b { color: var(--text); font-weight: 600; }
+.honest .m { color: var(--bad); flex: none; font-weight: 700; }
+.honest .y { color: var(--ok); flex: none; font-weight: 700; }
+
+.quote {
+  border-left: 2px solid var(--warn); padding: 4px 0 4px 22px; margin: 30px 0;
+  font-size: 19px; line-height: 1.55; color: var(--text); letter-spacing: -.015em;
+}
+.quote small { display: block; margin-top: 10px; color: var(--dim); font-size: 13.5px; letter-spacing: 0; }
+
+pre.code {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
+  padding: 18px 20px; font-family: var(--mono); font-size: 13.5px; overflow-x: auto; margin: 0;
+}
+pre.code .p { color: var(--dim); }
+pre.code .c { color: var(--dim); }
+
+footer { border-top: 1px solid var(--line); padding: 40px 0 70px; color: var(--dim); font-size: 13.5px; }
+footer .wrap { display: flex; gap: 18px; flex-wrap: wrap; align-items: center; }
+footer .sep { margin-left: auto; }
+</style>
+</head>
+<body>
+
+<nav><div class="wrap">
+  <span class="brand">LODESTAR</span>
+  <span style="color:var(--dim);font-size:13px">Know what your AI actually did.</span>
+  <span class="links">
+    <a href="#how" class="hide-sm">How it works</a>
+    <a href="#limits" class="hide-sm">Honest limits</a>
+    <a href="#install">Install</a>
+  </span>
+</div></nav>
+
+<header class="hero"><div class="wrap">
+  <span class="eyebrow">Tamper-evident execution history</span>
+  <h1>Your agent said the tests&nbsp;passed.<br><span class="fade">It was telling the truth.</span></h1>
+  <p class="sub">
+    It fixed the bug, ran the tests, and they really passed. Then it made one more edit.
+    <b>Its summary wasn't false — it described a codebase that no longer existed.</b>
+  </p>
+  <div class="cta">
+    <a class="btn primary" href="#install">Get started</a>
+    <a class="btn" href="#how">See a real report</a>
+  </div>
+  <p class="cmd" style="margin-top:22px"><span class="p">$</span> npm install -g lodestar</p>
+</div></header>
+
+<div class="wrap">
+  <!-- Real output. `site/assets/session.cast.txt` is the source; this is animated, not
+       re-typed. If the CLI's wording changes, this is wrong and must be regenerated. -->
+  <div class="term">
+    <div class="term-bar"><i></i><i></i><i></i><span>payments-api — lodestar claude</span></div>
+    <pre><code>
+<span class="ln" style="animation-delay:.2s"><span class="dm">$</span> lodestar claude</span>
+<span class="ln" style="animation-delay:.6s">LODESTAR recording <span class="dm">·</span> session #001</span>
+<span class="ln" style="animation-delay:.8s">  <span class="dm">observed: npm npx node python python3 dotnet ctest</span></span>
+<span class="ln" style="animation-delay:1.0s">  <span class="wn">not observed</span><span class="dm">: git (shadowed on PATH)</span></span>
+<span class="ln" style="animation-delay:1.2s"> </span>
+<span class="ln" style="animation-delay:1.6s"><span class="ag">[agent]</span> mission: reject negative charge amounts</span>
+<span class="ln" style="animation-delay:2.3s"><span class="ag">[agent]</span> edited src/payments.mjs — added the negative-amount guard</span>
+<span class="ln" style="animation-delay:3.0s"><span class="ag">[agent]</span> running the test suite</span>
+<span class="ln" style="animation-delay:3.6s"><span class="dm">&gt; payments-api@1.0.0 test</span></span>
+<span class="ln" style="animation-delay:3.8s"><span class="dm">&gt; node test.mjs</span></span>
+<span class="ln" style="animation-delay:4.4s"><span class="ok">PASS: negative amounts rejected</span></span>
+<span class="ln" style="animation-delay:5.1s"><span class="ag">[agent]</span> tidied up edge cases in src/payments.mjs</span>
+<span class="ln" style="animation-delay:5.8s"><span class="ag">[agent]</span> <span class="ok">Done. Negative amounts are rejected and all tests pass.</span></span>
+<span class="ln" style="animation-delay:6.4s"> </span>
+<span class="ln" style="animation-delay:6.8s"><span class="bd">LODESTAR</span>  session #001  <span class="dm">·</span>  node</span>
+<span class="ln" style="animation-delay:7.0s"> </span>
+<span class="ln" style="animation-delay:7.2s">  10 events recorded</span>
+<span class="ln" style="animation-delay:7.4s">  2 file(s) left uncommitted</span>
+<span class="ln" style="animation-delay:7.6s"> </span>
+<span class="ln" style="animation-delay:8.2s">  <span class="wn">▪ 2 Reality Fact(s) observed</span> — see <span class="bd">lodestar report</span></span>
+</code></pre>
+  </div>
+</div>
+
+<div class="wrap beats">
+  <p class="beat hit">The agent fixed the bug.</p>
+  <p class="beat hit">It ran the tests.</p>
+  <p class="beat hit">The tests passed.</p>
+  <p class="beat punch">Then it made one more edit.</p>
+  <p class="beat">Its summary wasn't false. It described a codebase that no longer existed.</p>
+  <p class="beat turn">LODESTAR doesn't read the summary. It reads the evidence.</p>
+</div>
+
+<section id="how"><div class="wrap">
+  <p class="kicker">The report</p>
+  <h2>Two seconds, not thirty minutes of scrollback</h2>
+  <p class="lede">
+    Every fact is a measurement with the events that produced it attached. No claim-parsing,
+    no AI scoring, no accusation — just what the boundary observed, in the order it happened.
+  </p>
+  <figure>
+    <img class="shot" src="assets/facts.png" alt="A LODESTAR report showing the fact 'Code changed after testing': npm test exited with code 0 at 10:51:13 pm, then payments.mjs was written at 10:51:14 pm, then a warning that no test run was observed after this change.">
+    <figcaption>
+      A real report from the session above. The chain is the fact: a passing test, a later
+      edit, and the gap between them. <b>LODESTAR never says the code is untested</b> — it
+      says no test run was <em>observed</em> after the change, because a shim it cannot win
+      is a hole it has to admit.
+    </figcaption>
+  </figure>
+
+  <div class="quote">
+    “Don't trust stale evidence” is a smaller claim than “don't trust AI,” and a truer one.
+    <small>Humans do this too: run the tests, make one tiny edit, commit. The agent just does it faster.</small>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <span class="n">01</span>
+      <h3>Recorded from outside</h3>
+      <p>The exit code comes from the OS, not the agent. LODESTAR is the parent process — the one relationship the kernel guarantees.</p>
+    </div>
+    <div class="card">
+      <span class="n">02</span>
+      <h3>Timestamps, not narration</h3>
+      <p>“After” is the file's modification time compared to the test process's exit time. Two measurements from the same clock.</p>
+    </div>
+    <div class="card">
+      <span class="n">03</span>
+      <h3>Hash-chained</h3>
+      <p>Append-only, verified on every report. Rewrite one event and the chain says <span class="mono" style="color:var(--bad)">BROKEN</span>.</p>
+    </div>
+  </div>
+</div></section>
+
+<section><div class="wrap">
+  <p class="kicker">The diff</p>
+  <h2>What actually landed on disk</h2>
+  <p class="lede">
+    The session's net effect on each file: the committed version, against what is there now.
+    The second added line is a rule no test has ever executed.
+  </p>
+  <figure>
+    <img class="shot" src="assets/changes.png" alt="A diff of src/payments.mjs showing two added lines: a negative-amount guard, and an untested check on card.token.">
+    <figcaption>Content snapshots are taken at the boundary. <code class="mono">.env</code>, <code class="mono">id_rsa</code> and <code class="mono">*.pem</code> are recorded as events and never read — the change is in the record, the bytes never were.</figcaption>
+  </figure>
+</div></section>
+
+<section><div class="wrap">
+  <p class="kicker">The record</p>
+  <h2>Every event, with the agent's own words labelled as such</h2>
+  <p class="lede">
+    Narration is recorded and never reasoned over. It sits in the timeline, tagged, where
+    you can compare it to what happened — which is your job, not the tool's.
+  </p>
+  <figure>
+    <img class="shot" src="assets/timeline.png" alt="A LODESTAR timeline: session start, agent output, process spawns, npm test exiting 0, a file write, git status, session end. Rows used as evidence are highlighted.">
+  </figure>
+</div></section>
+
+<section id="limits"><div class="wrap">
+  <p class="kicker">Honest limits</p>
+  <h2>What LODESTAR does not prove</h2>
+  <p class="lede">
+    A trust product with silent holes is worse than one with disclosed holes. These are in
+    the README, in the docs, and in the report itself — not in a footnote.
+  </p>
+  <div class="honest"><ul>
+    <li><span class="m">✗</span><span><b>It is tamper-evident, not tamper-proof.</b> LODESTAR runs as the same OS user as the agent, so a motivated agent can forge the record. Alteration leaves a mark; it is not prevented. Closing that needs privilege separation, which V0 does not have.</span></li>
+    <li><span class="m">✗</span><span><b>It cannot prove a test never ran.</b> If a shim loses PATH resolution, a command runs where we cannot see it. The report says which commands were <span class="mono">observed</span>, <span class="mono">shadowed</span>, <span class="mono">absent</span>, or <span class="mono">unknown</span> — measured against the agent's own shell, never assumed.</span></li>
+    <li><span class="m">✗</span><span><b>It does not read the agent's claims.</b> Not as a limitation — as a rule. Parsing natural language produces false accusations, and a trust product that accuses wrongly has spent the only asset it has.</span></li>
+    <li><span class="y">✓</span><span><b>An empty report never means “all clear.”</b> It means no divergence was <em>observed</em>, and every gap in the evidence is listed beside it. <span class="mono" style="color:var(--ok)">VERIFIED</span> has to be earned; anything we could not see demotes it to <span class="mono" style="color:var(--warn)">DEGRADED</span>.</span></li>
+  </ul></div>
+</div></section>
+
+<section id="install"><div class="wrap">
+  <p class="kicker">Three minutes</p>
+  <h2>Install, wrap, inspect</h2>
+  <p class="lede">
+    No account, no API key, no cloud, no daemon. Local SQLite, one directory,
+    git-ignored. Your code never leaves the machine.
+  </p>
+  <pre class="code"><span class="p">$</span> npm install -g lodestar
+
+<span class="p">$</span> cd my-project
+<span class="p">$</span> lodestar init          <span class="c"># detects language, package manager, git</span>
+
+<span class="p">$</span> lodestar claude        <span class="c"># work exactly as before</span>
+<span class="p">$</span> lodestar report        <span class="c"># see what actually happened</span></pre>
+  <p class="lede" style="margin-top:26px">
+    <code class="mono">lodestar report</code> opens the dashboard when a human is watching, and prints a
+    terminal report when it is piped — exiting non-zero if the chain is broken, so CI can
+    read it. <code class="mono">--html</code> writes a self-contained file you can send to anyone:
+    no server, no install, no network.
+  </p>
+</div></section>
+
+<footer><div class="wrap">
+  <span class="brand">LODESTAR</span>
+  <span>A tamper-evident execution history for AI coding agent sessions.</span>
+  <span class="sep">Every screenshot on this page is a real report.</span>
+</div></footer>
+
+<script>
+// Reveal the narration beats on scroll. Decoration only: with JS off, or reduced motion
+// on, every line is already visible — the pitch does not depend on the animation.
+(function () {
+  var beats = document.querySelectorAll('.beat');
+  if (!('IntersectionObserver' in window)) return;
+  beats.forEach(function (b) { b.style.opacity = '.25'; b.style.transition = 'opacity .5s'; });
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) {
+      if (e.isIntersecting) { e.target.style.opacity = '1'; io.unobserve(e.target); }
+    });
+  }, { threshold: 0.9 });
+  beats.forEach(function (b, i) { setTimeout(function () { io.observe(b); }, i * 60); });
+})();
+</script>
+</body>
+</html>

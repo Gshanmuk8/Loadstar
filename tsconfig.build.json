@@ -1,0 +1,14 @@
+{
+  // `npm run build` uses this. Same rules as tsconfig.json, but emits, and keeps tests
+  // and the stress harness out of dist/.
+  //
+  // Split from tsconfig.json deliberately: the editor and the typechecker must see the
+  // tests (or they get no config and report phantom errors), while the shipped package
+  // must not contain them.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist", "**/*.test.ts", "stress"]
+}

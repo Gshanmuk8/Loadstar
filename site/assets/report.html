@@ -1,0 +1,742 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<title>LODESTAR · session #001</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%238b93ff'/%3E%3Cpath fill='white' d='M12 4c.35 4.2 3.4 7.25 7.6 7.6-4.2.35-7.25 3.4-7.6 7.6-.35-4.2-3.4-7.25-7.6-7.6C8.6 11.25 11.65 8.2 12 4Z'/%3E%3C/svg%3E">
+<style>
+/* ===========================================================================
+   LODESTAR report — design system.
+   One set of token names, two themes. Components never reference a raw colour,
+   so light mode is a variable swap, not a second stylesheet drifting out of sync.
+   =========================================================================== */
+:root {
+  color-scheme: dark;
+  /* Layered near-black with a faint cool cast — depth comes from surfaces, not borders. */
+  --bg: #07080b;
+  --bg-2: #0b0d12;
+  --surface: #0f1218;
+  --surface-2: #14171f;
+  --raised: #191d26;
+  --line: #232834;
+  --line-soft: #191d25;
+  --text: #f0f3f8;
+  --muted: #99a2b2;
+  --dim: #656d7d;
+  --faint: #3a4150;
+  --ok: #43c463;        --ok-bg: rgba(67,196,99,.11);   --ok-line: rgba(67,196,99,.32);
+  --warn: #f0b429;      --warn-bg: rgba(240,180,41,.11); --warn-line: rgba(240,180,41,.34);
+  --bad: #fb5a54;       --bad-bg: rgba(251,90,84,.11);   --bad-line: rgba(251,90,84,.36);
+  --accent: #8b93ff;    --accent-bg: rgba(139,147,255,.12);
+  /* Soft, layered elevation — a hairline top highlight plus a diffuse drop. */
+  --shadow-sm: 0 1px 2px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.02);
+  --shadow: 0 1px 2px rgba(0,0,0,.45), 0 12px 34px -18px rgba(0,0,0,.85), inset 0 1px 0 rgba(255,255,255,.025);
+  --shadow-lg: 0 2px 4px rgba(0,0,0,.4), 0 26px 60px -28px rgba(0,0,0,.9), inset 0 1px 0 rgba(255,255,255,.035);
+  --ring: 0 0 0 3px color-mix(in srgb, var(--accent) 32%, transparent);
+  --mono: ui-monospace, "SF Mono", SFMono-Regular, "Cascadia Code", "JetBrains Mono", Menlo, Consolas, monospace;
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI Variable Text", "Segoe UI", Inter, Roboto, "Helvetica Neue", sans-serif;
+  --r-sm: 7px; --r-md: 11px; --r-lg: 16px; --r-xl: 20px;
+}
+@media (prefers-color-scheme: light) {
+  :root {
+    color-scheme: light;
+    --bg: #f7f8fa;
+    --bg-2: #f2f4f7;
+    --surface: #ffffff;
+    --surface-2: #fbfcfd;
+    --raised: #f3f5f8;
+    --line: #e3e7ec;
+    --line-soft: #edeff3;
+    --text: #0d1117;
+    --muted: #56606d;
+    --dim: #838d99;
+    --faint: #c2c9d2;
+    --ok: #1a7f37; --ok-bg: rgba(26,127,55,.09); --ok-line: rgba(26,127,55,.28);
+    --warn: #9a6700; --warn-bg: rgba(154,103,0,.09); --warn-line: rgba(154,103,0,.28);
+    --bad: #cf222e; --bad-bg: rgba(207,34,46,.08); --bad-line: rgba(207,34,46,.3);
+    --accent: #4f46e5; --accent-bg: rgba(79,70,229,.08);
+    --shadow-sm: 0 1px 2px rgba(16,22,26,.06);
+    --shadow: 0 1px 2px rgba(16,22,26,.05), 0 12px 30px -18px rgba(16,22,26,.22);
+    --shadow-lg: 0 2px 4px rgba(16,22,26,.05), 0 26px 56px -28px rgba(16,22,26,.28);
+    --ring: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
+  }
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 14px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: "kern" 1, "liga" 1, "calt" 1, "cv05" 1, "ss01" 1;
+  position: relative;
+}
+/* Ambient light from the top — the "mission control" glow, static and subtle. */
+body::before {
+  content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background:
+    radial-gradient(900px 380px at 50% -160px, color-mix(in srgb, var(--accent) 12%, transparent), transparent 70%),
+    radial-gradient(600px 300px at 100% -80px, color-mix(in srgb, var(--accent) 6%, transparent), transparent 70%);
+}
+.wrap, .topbar { position: relative; z-index: 1; }
+a { color: var(--accent); text-decoration: none; transition: color .12s; }
+a:hover { text-decoration: underline; }
+:focus-visible { outline: none; box-shadow: var(--ring); border-radius: var(--r-sm); }
+svg.ic { width: 14px; height: 14px; flex: none; vertical-align: -2px; }
+.mono { font-family: var(--mono); font-size: .92em; }
+.num { font-variant-numeric: tabular-nums; }
+.wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px 120px; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+
+/* --- top bar: app chrome, sticky ------------------------------------------ */
+.topbar {
+  position: sticky; top: 0; z-index: 20;
+  background: color-mix(in srgb, var(--bg) 72%, transparent);
+  backdrop-filter: saturate(150%) blur(16px);
+  -webkit-backdrop-filter: saturate(150%) blur(16px);
+  border-bottom: 1px solid var(--line-soft);
+  margin-bottom: 30px;
+}
+.topbar .inner {
+  max-width: 1080px; margin: 0 auto; padding: 13px 24px;
+  display: flex; align-items: center; gap: 12px;
+}
+.logomark {
+  width: 24px; height: 24px; flex: none; display: grid; place-items: center;
+  border-radius: 7px; color: #fff;
+  background: linear-gradient(145deg, var(--accent), color-mix(in srgb, var(--accent) 55%, #d946ef));
+  box-shadow: 0 2px 8px -2px color-mix(in srgb, var(--accent) 60%, transparent), inset 0 1px 0 rgba(255,255,255,.3);
+}
+.logomark svg { width: 14px; height: 14px; }
+.brand { font-weight: 700; letter-spacing: .16em; font-size: 12.5px; }
+.topbar-session { color: var(--dim); font-size: 12px; padding-left: 12px; border-left: 1px solid var(--line);
+  font-variant-numeric: tabular-nums; }
+.tagline { color: var(--dim); font-size: 12px; letter-spacing: .01em; margin-left: auto; }
+@media (max-width: 680px) { .topbar-session, .tagline { display: none; } }
+
+/* --- generic ------------------------------------------------------------- */
+h1 { font-size: 26px; line-height: 1.2; margin: 0; font-weight: 650; letter-spacing: -.02em; }
+h2 { font-size: 11px; margin: 0 0 13px; font-weight: 700; letter-spacing: .11em;
+     text-transform: uppercase; color: var(--dim); display: flex; align-items: center; gap: 7px; }
+h2 svg { width: 13px; height: 13px; }
+.meta { color: var(--muted); font-size: 13px; }
+.section { margin-top: 30px; }
+.section-title { display: flex; align-items: baseline; gap: 10px; margin: 0 2px 14px; }
+.section-title h2 { margin: 0; }
+.section-title .n { color: var(--dim); font-size: 12px; font-variant-numeric: tabular-nums; }
+
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--surface-2); border: 1px solid var(--line-soft);
+  border-radius: 999px; padding: 4px 11px; font-size: 12px; color: var(--muted);
+}
+.chip b { color: var(--text); font-weight: 600; }
+.chip.warn { color: var(--warn); border-color: var(--warn-line); background: var(--warn-bg); }
+.mission {
+  margin: 16px 0 0; padding: 12px 16px; border-left: 2px solid var(--accent);
+  background: var(--accent-bg); border-radius: 0 var(--r-sm) var(--r-sm) 0;
+  color: var(--muted); font-size: 13.5px;
+}
+
+/* --- status chip ---------------------------------------------------------- */
+.status {
+  display: inline-flex; align-items: center; gap: 7px;
+  border-radius: 999px; padding: 5px 12px;
+  font-size: 10.5px; font-weight: 700; letter-spacing: .1em;
+  border: 1px solid transparent; white-space: nowrap;
+}
+.status.VERIFIED { background: var(--ok-bg); color: var(--ok); border-color: var(--ok-line); }
+.status.DEGRADED { background: var(--warn-bg); color: var(--warn); border-color: var(--warn-line); }
+.status.BROKEN   { background: var(--bad-bg); color: var(--bad); border-color: var(--bad-line); }
+.dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor;
+       box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 22%, transparent); }
+
+/* --- cards ---------------------------------------------------------------- */
+.panel {
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--r-lg); padding: 20px 22px; margin-bottom: 14px;
+  box-shadow: var(--shadow);
+}
+
+/* --- THE VERDICT: the hero, the 10-second answer -------------------------- */
+.verdict-block {
+  position: relative; overflow: hidden;
+  display: flex; align-items: center; gap: 18px;
+  border: 1px solid var(--line); border-radius: var(--r-xl);
+  padding: 26px 28px; margin: 4px 0 8px; box-shadow: var(--shadow-lg);
+  background: var(--surface);
+}
+.verdict-block::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(520px 200px at 0% 0%, var(--_glow), transparent 72%);
+  opacity: .7;
+}
+.verdict-block.ok   { --_glow: var(--ok-bg);   border-color: var(--ok-line); }
+.verdict-block.warn { --_glow: var(--warn-bg); border-color: var(--warn-line); }
+.verdict-block.bad  { --_glow: var(--bad-bg);  border-color: var(--bad-line); }
+.verdict-badge {
+  position: relative; z-index: 1; flex: none;
+  width: 46px; height: 46px; border-radius: 13px; display: grid; place-items: center;
+  border: 1px solid transparent;
+}
+.verdict-block.ok   .verdict-badge { background: var(--ok-bg);   border-color: var(--ok-line);   color: var(--ok); }
+.verdict-block.warn .verdict-badge { background: var(--warn-bg); border-color: var(--warn-line); color: var(--warn); }
+.verdict-block.bad  .verdict-badge { background: var(--bad-bg);  border-color: var(--bad-line);  color: var(--bad); }
+.verdict-badge svg { width: 24px; height: 24px; }
+.verdict-main { position: relative; z-index: 1; min-width: 0; }
+.verdict-finding { font-size: 24px; font-weight: 680; letter-spacing: -.025em; line-height: 1.15; }
+.verdict-coverage { font-size: 13.5px; margin-top: 5px; font-weight: 500; display: inline-flex; align-items: center; gap: 7px; }
+.verdict-coverage::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.verdict-coverage.ok { color: var(--ok); }
+.verdict-coverage.warn { color: var(--warn); }
+.verdict-block .status { position: relative; z-index: 1; margin-left: auto; align-self: flex-start; }
+@media (max-width: 560px) { .verdict-block { padding: 20px; } .verdict-finding { font-size: 20px; } .verdict-block .status { display: none; } }
+
+/* small verdict row — reused by the clean/broken fact states, git panel ----- */
+.verdict { display: flex; align-items: center; gap: 12px; }
+.verdict svg { width: 20px; height: 20px; }
+.verdict .clean { color: var(--ok); font-weight: 600; font-size: 15px; }
+.verdict .broken-facts { color: var(--bad); font-weight: 600; font-size: 15px; }
+.panel.broken { border-color: var(--bad-line); background: linear-gradient(180deg, var(--bad-bg), transparent 60%); }
+
+/* --- divergence card ------------------------------------------------------ */
+.fact {
+  position: relative; background: var(--surface);
+  border: 1px solid var(--line); border-left: 3px solid var(--warn);
+  border-radius: var(--r-md); padding: 18px 20px; margin-bottom: 12px;
+  box-shadow: var(--shadow); transition: border-color .14s, box-shadow .14s, transform .14s;
+}
+.fact:hover { box-shadow: var(--shadow-lg); border-left-color: color-mix(in srgb, var(--warn) 80%, var(--text)); }
+.fact-head { display: flex; align-items: flex-start; gap: 11px; }
+.fact-head > svg { color: var(--warn); margin-top: 2px; width: 17px; height: 17px; }
+.fact .stmt { font-weight: 620; font-size: 15.5px; letter-spacing: -.015em; }
+.fact .id {
+  display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+  color: var(--dim); font-size: 12.5px; margin-top: 4px;
+}
+.badge {
+  font-family: var(--mono); font-size: 10px; font-weight: 700; letter-spacing: .05em;
+  background: var(--warn-bg); color: var(--warn); padding: 2px 8px; border-radius: 6px;
+  border: 1px solid var(--warn-line);
+}
+
+/* observed vs inference — must never share a visual style */
+.group { margin: 15px 0 0; }
+.group-label {
+  font-size: 9.5px; letter-spacing: .12em; text-transform: uppercase; font-weight: 700;
+  margin-bottom: 6px; display: flex; align-items: center; gap: 6px;
+}
+.group-label::before { content: ""; width: 14px; height: 1px; background: currentColor; opacity: .5; }
+.group.observed .group-label { color: var(--dim); }
+.group.consequence .group-label { color: var(--warn); }
+.steps { list-style: none; margin: 0; padding: 0; }
+.group.consequence {
+  border-left: 2px solid var(--warn-line); background: linear-gradient(90deg, var(--warn-bg), transparent 60%);
+  padding: 8px 12px 8px 14px; margin-left: 1px; border-radius: 0 var(--r-sm) var(--r-sm) 0;
+}
+.step { display: flex; align-items: center; gap: 10px; padding: 5px 0; font-size: 13.5px; }
+.step > svg { flex: none; width: 15px; height: 15px; }
+.step.observed > svg { color: var(--ok); }
+.step.observed .step-text { font-family: var(--mono); font-size: 12.5px; }
+.step.consequence > svg { color: var(--warn); }
+.step.consequence .step-text { color: var(--warn); font-weight: 600; }
+.step-text { flex: 1; min-width: 0; }
+.step-time { color: var(--dim); font-size: 11px; font-variant-numeric: tabular-nums;
+  font-family: var(--mono); flex: none; }
+
+/* "why LODESTAR believes this" disclosure */
+.fact-details { border: 0; background: none; box-shadow: none; margin: 12px 0 0; overflow: visible; }
+.fact-details summary { padding: 7px 0 4px; font-size: 12px; font-weight: 500; color: var(--dim);
+  list-style: none; display: inline-flex; align-items: center; gap: 7px; }
+.fact-details summary:hover { background: none; color: var(--accent); }
+.fact-details[open] summary { color: var(--muted); }
+.fact-details[open] summary .chev { transform: rotate(90deg); }
+.fact-details-body {
+  margin-top: 8px; padding: 16px 18px; background: var(--bg-2);
+  border: 1px solid var(--line-soft); border-radius: var(--r-md);
+}
+.why-grid { display: flex; gap: 40px; flex-wrap: wrap; margin-bottom: 16px; }
+.why-block { margin-bottom: 14px; }
+.why-block:last-child { margin-bottom: 0; }
+.why-label { font-size: 9.5px; letter-spacing: .12em; text-transform: uppercase; font-weight: 700;
+  color: var(--dim); margin-bottom: 6px; }
+.why-val { margin: 0; font-size: 13px; font-weight: 500; text-transform: capitalize; }
+.why-val.mono { text-transform: none; }
+.why-list { margin: 0; padding-left: 18px; color: var(--muted); font-size: 12.5px; line-height: 1.6; }
+.why-list li { padding: 3px 0; }
+.why-list li::marker { color: var(--faint); }
+.why-none { margin: 0; color: var(--dim); font-size: 12.5px; font-style: italic; }
+.ev { margin: 0; padding-left: 14px; border-left: 2px solid var(--line); }
+.ev div { font-family: var(--mono); font-size: 11.5px; color: var(--muted);
+  padding: 3px 0; display: flex; gap: 9px; align-items: baseline; }
+.ev .seq { color: var(--accent); flex: none; font-weight: 600; }
+
+/* --- key/value metadata --------------------------------------------------- */
+.kv-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1px; background: var(--line-soft);
+  border: 1px solid var(--line-soft); border-radius: var(--r-md); overflow: hidden; }
+@media (max-width: 560px) { .kv-grid { grid-template-columns: 1fr; } }
+.kv { display: flex; justify-content: space-between; gap: 12px; padding: 11px 14px; background: var(--surface); }
+.kv-k { color: var(--dim); font-size: 12px; }
+.kv-v { font-size: 12px; color: var(--text); text-align: right; word-break: break-all; }
+
+/* --- notes: limitations + interference ------------------------------------ */
+.note { display: flex; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line-soft);
+  color: var(--muted); font-size: 13px; line-height: 1.6; }
+.note:last-child { border-bottom: 0; padding-bottom: 0; }
+.note .q { color: var(--warn); flex: none; margin-top: 2px; }
+.note .i { color: var(--accent); flex: none; margin-top: 2px; }
+
+/* --- tabs: segmented control ---------------------------------------------- */
+.tabs { display: flex; gap: 3px; flex-wrap: wrap;
+  background: var(--surface-2); border: 1px solid var(--line-soft);
+  border-radius: var(--r-md); padding: 4px; margin: 36px 0 18px; }
+.tab { display: inline-flex; align-items: center; gap: 7px; background: none; border: 0;
+  border-radius: var(--r-sm); color: var(--dim); font: inherit; font-size: 13px; font-weight: 500;
+  padding: 8px 14px; cursor: pointer; transition: background .14s, color .14s, box-shadow .14s; }
+.tab:hover { color: var(--text); background: color-mix(in srgb, var(--raised) 60%, transparent); }
+.tab svg { opacity: .8; }
+.tab[aria-selected="true"] { background: var(--raised); color: var(--text); font-weight: 600;
+  box-shadow: var(--shadow-sm); }
+.tab[aria-selected="true"] svg { opacity: 1; color: var(--accent); }
+.tab .count { font-size: 10.5px; font-variant-numeric: tabular-nums; color: var(--dim);
+  background: color-mix(in srgb, var(--muted) 16%, transparent); padding: 1px 7px; border-radius: 999px; }
+.pane { animation: fade .18s ease; }
+.pane[hidden] { display: none; }
+@keyframes fade { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
+
+/* --- tables --------------------------------------------------------------- */
+.card-table { background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--r-lg); overflow: hidden; box-shadow: var(--shadow); }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { text-align: left; color: var(--dim); font-weight: 700; font-size: 10px;
+  letter-spacing: .08em; text-transform: uppercase;
+  background: var(--surface-2); border-bottom: 1px solid var(--line);
+  padding: 10px 15px; white-space: nowrap; }
+td { padding: 10px 15px; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
+tbody tr:last-child td { border-bottom: 0; }
+tbody tr { transition: background .1s; }
+tbody tr:hover { background: var(--raised); }
+.tl-row.cited { background: var(--warn-bg); box-shadow: inset 2px 0 0 var(--warn); }
+.tl-row.cited:hover { background: color-mix(in srgb, var(--warn) 15%, transparent); }
+.tl-kind { font-family: var(--mono); font-size: 11px; color: var(--dim); white-space: nowrap; }
+.tl-time { color: var(--dim); font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tl-seq { color: var(--faint); font-family: var(--mono); font-size: 11px; }
+
+/* --- pills ---------------------------------------------------------------- */
+.pill { display: inline-block; font-size: 9.5px; text-transform: uppercase; letter-spacing: .07em;
+  font-weight: 700; padding: 2px 8px; border-radius: 999px;
+  border: 1px solid var(--line); color: var(--dim); white-space: nowrap; }
+.pill.narration { color: var(--warn); border-color: var(--warn-line); background: var(--warn-bg); }
+.pill.cited { color: var(--warn); border-color: var(--warn-line); background: var(--warn-bg); }
+.pill.danger { color: var(--bad); border-color: var(--bad-line); background: var(--bad-bg); }
+
+/* --- changes / diffs ------------------------------------------------------ */
+details.file { border: 1px solid var(--line); border-radius: var(--r-md); margin-bottom: 8px;
+  background: var(--surface); overflow: hidden; box-shadow: var(--shadow-sm); transition: border-color .14s; }
+details.file[open] { border-color: color-mix(in srgb, var(--accent) 34%, var(--line)); box-shadow: var(--shadow); }
+details.file summary { cursor: pointer; padding: 13px 16px; display: flex; gap: 10px; align-items: center;
+  flex-wrap: wrap; list-style: none; user-select: none; transition: background .1s; }
+details.file summary::-webkit-details-marker { display: none; }
+details.file summary::marker { content: ""; }
+details.file summary:hover { background: var(--raised); }
+summary .chev { color: var(--dim); transition: transform .16s; }
+details[open] summary .chev { transform: rotate(90deg); }
+summary .fname { font-family: var(--mono); font-size: 13px; font-weight: 600; }
+summary .fpath { color: var(--dim); font-size: 11.5px; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap; max-width: 40ch; }
+.diff { font-family: var(--mono); font-size: 12px; line-height: 1.7; overflow-x: auto;
+  border-top: 1px solid var(--line); background: var(--bg-2); }
+.diff pre { margin: 0; padding: 14px 0; white-space: pre; }
+.diff span { display: block; padding: 0 16px; position: relative; }
+.diff .add { background: var(--ok-bg); color: color-mix(in srgb, var(--ok) 80%, var(--text)); box-shadow: inset 2px 0 0 var(--ok); }
+.diff .del { background: var(--bad-bg); color: color-mix(in srgb, var(--bad) 80%, var(--text)); box-shadow: inset 2px 0 0 var(--bad); }
+.unavail { padding: 14px 16px; border-top: 1px solid var(--line); color: var(--muted);
+  font-size: 12.5px; background: var(--surface-2); display: flex; gap: 10px; }
+.unavail svg { color: var(--dim); margin-top: 3px; }
+
+/* --- coverage ------------------------------------------------------------- */
+.cov { display: flex; flex-wrap: wrap; gap: 7px; }
+.cov span { display: inline-flex; align-items: center; gap: 7px;
+  font-family: var(--mono); font-size: 11.5px; padding: 5px 10px;
+  border-radius: var(--r-sm); border: 1px solid var(--line); background: var(--surface-2); }
+.cov span:before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor;
+  box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 18%, transparent); }
+.cov .observed { color: var(--ok); }
+.cov .shadowed { color: var(--warn); }
+.cov .unknown  { color: var(--bad); }
+.cov .absent   { color: var(--dim); }
+.legend { color: var(--dim); font-size: 12px; margin-top: 14px; line-height: 1.8; }
+.legend b { color: var(--muted); font-family: var(--mono); font-size: 11px; }
+
+.empty { color: var(--dim); font-size: 13px; padding: 36px; text-align: center;
+  background: var(--surface); border: 1px dashed var(--line); border-radius: var(--r-lg); }
+footer { margin-top: 60px; padding-top: 22px; border-top: 1px solid var(--line-soft);
+  color: var(--dim); font-size: 12px; line-height: 1.8; }
+.sessions td.n { font-family: var(--mono); color: var(--muted); }
+.sessions tr.current { background: var(--accent-bg); box-shadow: inset 2px 0 0 var(--accent); }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-check" viewBox="0 0 16 16"><path fill="currentColor" d="M13.78 4.22a.75.75 0 0 1 0 1.06l-6.5 6.5a.75.75 0 0 1-1.06 0l-3.25-3.25a.75.75 0 1 1 1.06-1.06L6.75 10.19l5.97-5.97a.75.75 0 0 1 1.06 0Z"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 16 16"><path fill="currentColor" d="M6.457 1.047c.659-1.234 2.427-1.234 3.086 0l6.082 11.378A1.75 1.75 0 0 1 14.082 15H1.918a1.75 1.75 0 0 1-1.543-2.575Zm1.763.707a.25.25 0 0 0-.44 0L1.698 13.132a.25.25 0 0 0 .22.368h12.164a.25.25 0 0 0 .22-.368ZM8 5a.75.75 0 0 1 .75.75v2.5a.75.75 0 0 1-1.5 0v-2.5A.75.75 0 0 1 8 5Zm0 7a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z"/></symbol>
+  <symbol id="i-x" viewBox="0 0 16 16"><path fill="currentColor" d="M2.343 13.657A8 8 0 1 1 13.658 2.343 8 8 0 0 1 2.343 13.657ZM6.03 4.97a.75.75 0 0 0-1.06 1.06L6.94 8 4.97 9.97a.75.75 0 1 0 1.06 1.06L8 9.06l1.97 1.97a.75.75 0 1 0 1.06-1.06L9.06 8l1.97-1.97a.75.75 0 0 0-1.06-1.06L8 6.94Z"/></symbol>
+  <symbol id="i-question" viewBox="0 0 16 16"><path fill="currentColor" d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Zm8-6.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM6.92 6.085c.081-.16.19-.299.34-.398.145-.097.371-.187.74-.187.28 0 .553.087.738.225A.613.613 0 0 1 9 6.25c0 .177-.04.264-.077.318a.956.956 0 0 1-.277.245c-.076.051-.158.1-.258.161l-.007.004a7.61 7.61 0 0 0-.313.195 2.11 2.11 0 0 0-.692.72A.75.75 0 0 0 8.75 8.75c0-.02.001-.03.007-.048.006-.017.026-.06.107-.145.084-.089.19-.17.315-.253l.008-.005a7.87 7.87 0 0 1 .27-.164c.155-.093.32-.192.463-.298.283-.211.5-.48.5-.887 0-.717-.343-1.294-.85-1.67C9.06 4.906 8.545 4.75 8 4.75c-.63 0-1.15.16-1.573.44a2.07 2.07 0 0 0-.833.982.75.75 0 0 0 1.326.687ZM9 11a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z"/></symbol>
+  <symbol id="i-info" viewBox="0 0 16 16"><path fill="currentColor" d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Zm8-6.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM6.5 7.75A.75.75 0 0 1 7.25 7h1a.75.75 0 0 1 .75.75v2.75h.25a.75.75 0 0 1 0 1.5h-2a.75.75 0 0 1 0-1.5h.25v-2h-.25a.75.75 0 0 1-.75-.75ZM8 6a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z"/></symbol>
+  <symbol id="i-file" viewBox="0 0 16 16"><path fill="currentColor" d="M2 1.75C2 .784 2.784 0 3.75 0h5.586c.464 0 .909.184 1.237.513l2.914 2.914c.329.328.513.773.513 1.237v9.586A1.75 1.75 0 0 1 12.25 16h-8.5A1.75 1.75 0 0 1 2 14.25Zm1.75-.25a.25.25 0 0 0-.25.25v12.5c0 .138.112.25.25.25h8.5a.25.25 0 0 0 .25-.25V6h-2.75A1.75 1.75 0 0 1 8 4.25V1.5Zm5.75.56v2.19c0 .138.112.25.25.25h2.19Z"/></symbol>
+  <symbol id="i-git" viewBox="0 0 16 16"><path fill="currentColor" d="M11.75 2.5a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5Zm-2.25.75a2.25 2.25 0 1 1 3 2.122V6A2.5 2.5 0 0 1 10 8.5H6a1 1 0 0 0-1 1v1.128a2.251 2.251 0 1 1-1.5 0V5.372a2.25 2.25 0 1 1 1.5 0v1.836A2.492 2.492 0 0 1 6 7h4a1 1 0 0 0 1-1v-.628A2.25 2.25 0 0 1 9.5 3.25ZM4.25 12a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5ZM3.5 3.25a.75.75 0 1 0 1.5 0 .75.75 0 0 0-1.5 0Z"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 16 16"><path fill="currentColor" d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0ZM1.5 8a6.5 6.5 0 1 0 13 0 6.5 6.5 0 0 0-13 0Zm7-3.25v3.5l2.29 1.32a.75.75 0 0 1-.75 1.3l-2.67-1.54A.75.75 0 0 1 7 8.5v-3.75a.75.75 0 0 1 1.5 0Z"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 16 16"><path fill="currentColor" d="M7.467.133a1.748 1.748 0 0 1 1.066 0l5.25 1.68A1.75 1.75 0 0 1 15 3.48V7c0 1.566-.32 3.182-1.303 4.682-.983 1.498-2.585 2.813-5.032 3.855a1.7 1.7 0 0 1-1.33 0c-2.447-1.042-4.05-2.357-5.032-3.855C1.32 10.182 1 8.566 1 7V3.48a1.75 1.75 0 0 1 1.217-1.667Zm.61 1.429a.25.25 0 0 0-.153 0l-5.25 1.68a.25.25 0 0 0-.174.238V7c0 1.358.275 2.666 1.057 3.859.784 1.194 2.121 2.34 4.366 3.297a.2.2 0 0 0 .154 0c2.245-.956 3.582-2.104 4.366-3.298C13.225 9.666 13.5 8.36 13.5 7V3.48a.25.25 0 0 0-.174-.237Z"/></symbol>
+  <symbol id="i-list" viewBox="0 0 16 16"><path fill="currentColor" d="M2 4a1 1 0 1 1 0-2 1 1 0 0 1 0 2Zm3.75-1.5h8.5a.75.75 0 0 1 0 1.5h-8.5a.75.75 0 0 1 0-1.5ZM2 9a1 1 0 1 1 0-2 1 1 0 0 1 0 2Zm3.75-1.5h8.5a.75.75 0 0 1 0 1.5h-8.5a.75.75 0 0 1 0-1.5ZM2 14a1 1 0 1 1 0-2 1 1 0 0 1 0 2Zm3.75-1.5h8.5a.75.75 0 0 1 0 1.5h-8.5a.75.75 0 0 1 0-1.5Z"/></symbol>
+  <symbol id="i-chevron" viewBox="0 0 16 16"><path fill="currentColor" d="M6.22 3.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06L9.94 8 6.22 4.28a.75.75 0 0 1 0-1.06Z"/></symbol>
+  <symbol id="i-star" viewBox="0 0 24 24"><path fill="currentColor" d="M12 0c.5 6.6 4.9 11 11.5 11.5C16.9 12 12.5 16.4 12 23c-.5-6.6-4.9-11-11.5-11.5C7.1 11 11.5 6.6 12 0Z"/></symbol>
+</svg>
+<div class="topbar"><div class="inner">
+  <span class="logomark"><svg><use href="#i-star"/></svg></span>
+  <span class="brand">LODESTAR</span>
+  <span class="topbar-session mono">session #001</span>
+  <span class="tagline">node · 17/7/2026, 12:11:56 am</span>
+</div></div>
+
+<div class="wrap">
+  <!-- 1. VERDICT — the 10-second answer, visually dominant. -->
+  <section class="verdict-block warn">
+    <span class="verdict-badge"><svg><use href="#i-alert"/></svg></span>
+    <div class="verdict-main">
+      <div class="verdict-finding">2 divergences observed</div>
+      <div class="verdict-coverage warn">Evidence incomplete · 1 gap</div>
+    </div>
+    <span class="status DEGRADED">
+      <span class="dot"></span>DEGRADED
+    </span>
+  </section>
+  
+
+  <!-- 3 + 4. DIVERGENCES, each with its observed facts, LODESTAR's reading, and an
+       expandable "why" carrying confidence + assumptions + evidence. -->
+  <div class="section"><h2>Divergences (2)</h2><div class="fact">
+        <div class="fact-head">
+          <svg class="ic"><use href="#i-alert"/></svg>
+          <div style="min-width:0">
+            <div class="stmt">Code changed after testing</div>
+            <div class="id"><span>payments.mjs modified after the last test run</span></div>
+          </div>
+          <span class="badge" style="margin-left:auto">RF-04</span>
+        </div>
+        <div class="group observed">
+      <div class="group-label">Observed facts</div>
+      <ul class="steps"><li class="step observed">
+          <svg class="ic"><use href="#i-check"/></svg>
+          <span class="step-text">npm test exited with code 0</span>
+          <time class="step-time">12:12:00 am</time>
+        </li><li class="step observed">
+          <svg class="ic"><use href="#i-check"/></svg>
+          <span class="step-text">wrote src/payments.mjs</span>
+          <time class="step-time">12:12:01 am</time>
+        </li></ul>
+    </div>
+        <div class="group consequence">
+      <div class="group-label">LODESTAR’s reading</div>
+      <ul class="steps"><li class="step consequence">
+          <svg class="ic"><use href="#i-alert"/></svg>
+          <span class="step-text">No test run was observed after this change.</span>
+          
+        </li></ul>
+    </div>
+        <details class="fact-details">
+      <summary><svg class="ic chev"><use href="#i-chevron"/></svg>Why LODESTAR believes this</summary>
+      <div class="fact-details-body">
+        <div class="why-grid">
+          <div class="why-block">
+            <div class="why-label">Confidence</div>
+            <p class="why-val">high</p>
+          </div>
+          <div class="why-block">
+            <div class="why-label">Catalog id</div>
+            <p class="why-val mono">RF-04</p>
+          </div>
+        </div>
+        <div class="why-block">
+          <div class="why-label">Assumptions</div>
+          <ul class="why-list"><li>Ordering is by filesystem modification time versus the test run’s exit time. It is wrong if the system clock moved backward during the session, or if the filesystem records only coarse (second-granularity) modification times.</li><li>Modification times can be set by any process, so they are evidence, not proof.</li></ul>
+        </div>
+        <div class="why-block">
+      <div class="why-label">Evidence</div>
+      <div class="ev"><div><span class="seq">#7</span><span>wrote src/payments.mjs</span></div><div><span class="seq">#6</span><span>npm test exited with code 0</span></div></div>
+    </div>
+      </div>
+    </details>
+      </div><div class="fact">
+        <div class="fact-head">
+          <svg class="ic"><use href="#i-alert"/></svg>
+          <div style="min-width:0">
+            <div class="stmt">Uncommitted work left behind</div>
+            <div class="id"><span>2 files were left uncommitted</span></div>
+          </div>
+          <span class="badge" style="margin-left:auto">RF-02</span>
+        </div>
+        <div class="group observed">
+      <div class="group-label">Observed facts</div>
+      <ul class="steps"><li class="step observed">
+          <svg class="ic"><use href="#i-check"/></svg>
+          <span class="step-text">git working tree had 2 uncommitted file(s)</span>
+          <time class="step-time">12:12:02 am</time>
+        </li></ul>
+    </div>
+        
+        <details class="fact-details">
+      <summary><svg class="ic chev"><use href="#i-chevron"/></svg>Why LODESTAR believes this</summary>
+      <div class="fact-details-body">
+        <div class="why-grid">
+          <div class="why-block">
+            <div class="why-label">Confidence</div>
+            <p class="why-val">high</p>
+          </div>
+          <div class="why-block">
+            <div class="why-label">Catalog id</div>
+            <p class="why-val mono">RF-02</p>
+          </div>
+        </div>
+        <div class="why-block">
+          <div class="why-label">Assumptions</div>
+          <p class="why-none">None beyond the recorded events themselves.</p>
+        </div>
+        <div class="why-block">
+      <div class="why-label">Evidence</div>
+      <div class="ev"><div><span class="seq">#9</span><span>git working tree had 2 uncommitted file(s)</span></div></div>
+    </div>
+      </div>
+    </details>
+      </div></div>
+
+  <!-- 7. LIMITATIONS & ASSUMPTIONS — always visible, never hidden behind a tab. -->
+  <div class="panel">
+      <h2>Limitations (1)</h2>
+      <p class="meta" style="margin:-6px 0 8px">What LODESTAR could not determine. Not evidence of absence.</p>
+      <div class="note">
+            <svg class="ic q"><use href="#i-question"/></svg><span>Shims were shadowed on PATH for: git. If the agent ran these, LODESTAR did not see it, and their absence from this report proves nothing.</span>
+          </div>
+    </div>
+
+  <!-- 2, 5, 6. The reference material an investigator drills into AFTER the answer:
+       files (blast radius) first, then the sequence, git, trust, and identity. -->
+  <div class="tabs" role="tablist">
+    <button class="tab" role="tab" aria-selected="true" data-pane="p-changes">
+      <svg class="ic"><use href="#i-file"/></svg>Files affected <span class="count num">1</span></button>
+    <button class="tab" role="tab" aria-selected="false" data-pane="p-timeline">
+      <svg class="ic"><use href="#i-list"/></svg>Timeline <span class="count num">10</span></button>
+    <button class="tab" role="tab" aria-selected="false" data-pane="p-git">
+      <svg class="ic"><use href="#i-git"/></svg>Git</button>
+    <button class="tab" role="tab" aria-selected="false" data-pane="p-verify">
+      <svg class="ic"><use href="#i-shield"/></svg>Verification</button>
+    <button class="tab" role="tab" aria-selected="false" data-pane="p-sessions">
+      <svg class="ic"><use href="#i-clock"/></svg>Sessions <span class="count num">1</span></button>
+  </div>
+
+  <div class="pane" id="p-changes"><details class="file">
+        <summary>
+          <svg class="ic chev"><use href="#i-chevron"/></svg>
+          <svg class="ic" style="color:var(--dim)"><use href="#i-file"/></svg>
+          <span class="fname">payments.mjs</span>
+          <span class="fpath" title="C:\Users\madara\OneDrive\Desktop\Loadstar\LODESTAR\demo\.workspace\src\payments.mjs">src/payments.mjs</span>
+          
+          
+          
+          <span class="meta num" style="margin-left:auto">2 writes</span>
+        </summary>
+        <div class="diff"><pre><span> export function chargeCard(card) {</span><span class="add">+  if (card.amount &lt;= 0) return &#39;rejected&#39;</span><span class="add">+  if (!card.token) return &#39;rejected&#39;</span><span>   return &#39;charged&#39;</span><span> }</span><span> </span></pre></div>
+      </details></div>
+  <div class="pane" id="p-timeline" hidden><div class="card-table"><table><thead><tr>
+      <th style="width:48px">Seq</th><th style="width:96px">Time</th>
+      <th style="width:130px">Kind</th><th>What happened</th><th style="width:96px"></th>
+    </tr></thead><tbody>
+    <tr class="tl-row ">
+          <td class="tl-seq">1</td>
+          <td class="tl-time">12:11:56 am</td>
+          <td class="tl-kind">session.start</td>
+          <td>session started</td>
+          <td>
+              </td>
+        </tr><tr class="tl-row ">
+          <td class="tl-seq">2</td>
+          <td class="tl-time">12:11:58 am</td>
+          <td class="tl-kind">agent.output</td>
+          <td>agent output</td>
+          <td>
+              </td>
+        </tr><tr class="tl-row ">
+          <td class="tl-seq">3</td>
+          <td class="tl-time">12:11:58 am</td>
+          <td class="tl-kind">process.spawn</td>
+          <td>ran node</td>
+          <td>
+              </td>
+        </tr><tr class="tl-row ">
+          <td class="tl-seq">4</td>
+          <td class="tl-time">12:11:59 am</td>
+          <td class="tl-kind">file.write</td>
+          <td>wrote src/payments.mjs</td>
+          <td>
+              </td>
+        </tr><tr class="tl-row ">
+          <td class="tl-seq">5</td>
+          <td class="tl-time">12:12:00 am</td>
+          <td class="tl-kind">process.spawn</td>
+          <td>ran npm</td>
+          <td>
+              </td>
+        </tr><tr class="tl-row cited">
+          <td class="tl-seq">6</td>
+          <td class="tl-time">12:12:00 am</td>
+          <td class="tl-kind">process.exit</td>
+          <td>npm test exited with code 0</td>
+          <td>
+              <span class="pill cited">evidence</span></td>
+        </tr><tr class="tl-row cited">
+          <td class="tl-seq">7</td>
+          <td class="tl-time">12:12:01 am</td>
+          <td class="tl-kind">file.write</td>
+          <td>wrote src/payments.mjs</td>
+          <td>
+              <span class="pill cited">evidence</span></td>
+        </tr><tr class="tl-row ">
+          <td class="tl-seq">8</td>
+          <td class="tl-time">12:12:02 am</td>
+          <td class="tl-kind">process.exit</td>
+          <td>node C:\Users\madara\OneDrive\Desktop\Loadstar\LODESTAR\demo\agent.mjs exited with code 0</td>
+          <td>
+              </td>
+        </tr><tr class="tl-row cited">
+          <td class="tl-seq">9</td>
+          <td class="tl-time">12:12:02 am</td>
+          <td class="tl-kind">git.status</td>
+          <td>git working tree had 2 uncommitted file(s)</td>
+          <td>
+              <span class="pill cited">evidence</span></td>
+        </tr><tr class="tl-row ">
+          <td class="tl-seq">10</td>
+          <td class="tl-time">12:12:02 am</td>
+          <td class="tl-kind">session.end</td>
+          <td>session ended (exit 0)</td>
+          <td>
+              </td>
+        </tr>
+  </tbody></table></div>
+  <p class="meta" style="margin-top:14px">Rows marked <span class="pill narration">narration</span>
+  are the agent's own account. They are recorded, never reasoned over — no Reality Fact is
+  derived from them.</p></div>
+  <div class="pane" id="p-git" hidden><div class="chips" style="margin:0 0 16px">
+    <span class="chip"><svg class="ic"><use href="#i-git"/></svg>branch <b class="mono">master</b></span>
+    <span class="chip">HEAD <b class="mono">21431c77c9</b></span>
+    <span class="chip">0 commits this session</span>
+  </div><p class="empty">No commits were created during this session.</p><div class="panel" style="margin-top:14px">
+             <h2>Uncommitted at session end (2)</h2>
+             <div class="cov"><span class="shadowed">src/payments.mjs</span><span class="shadowed">.gitignore</span></div>
+           </div></div>
+  <div class="pane" id="p-verify" hidden><div class="panel">
+    <span class="status DEGRADED"><span class="dot"></span>DEGRADED</span>
+    <p style="margin:14px 0 0">Some evidence is unavailable. The chain itself recomputes across
+           10 events — the facts above are still true — but the record is
+           not complete, and the gaps are listed below.</p>
+    <div style="margin-top:14px"><div class="note">
+            <svg class="ic q"><use href="#i-question"/></svg><span>Shims were shadowed on PATH for: git. If the agent ran these, LODESTAR did not see it, and their absence from this report proves nothing.</span>
+          </div></div>
+  </div><div class="panel" style="margin-top:14px">
+       <h2>Command coverage, as measured</h2>
+       <p class="meta" style="margin:-6px 0 12px">Measured against the agent's own shell at session start — never assumed.</p>
+       <div class="cov">
+         <span class="shadowed" title="/mingw64/bin/git">git · shadowed</span><span class="observed" title="/c/Program Files/nodejs/npm">npm · observed</span><span class="observed" title="/c/Program Files/nodejs/npx">npx · observed</span><span class="observed" title="/c/Program Files/nodejs/node">node · observed</span><span class="absent" title="">pnpm · absent</span><span class="absent" title="">yarn · absent</span><span class="absent" title="">bun · absent</span><span class="observed" title="/c/Users/madara/AppData/Local/hermes/hermes-agent/venv/Scripts/python">python · observed</span><span class="observed" title="/c/Users/madara/AppData/Local/Microsoft/WindowsApps/python3">python3 · observed</span><span class="absent" title="">pytest · absent</span><span class="absent" title="">tox · absent</span><span class="absent" title="">nox · absent</span><span class="absent" title="">docker · absent</span><span class="absent" title="">make · absent</span><span class="absent" title="">cargo · absent</span><span class="absent" title="">go · absent</span><span class="absent" title="">gradle · absent</span><span class="absent" title="">gradlew · absent</span><span class="absent" title="">mvn · absent</span><span class="observed" title="/c/Program Files/dotnet/dotnet">dotnet · observed</span><span class="observed" title="/c/Users/madara/AppData/Local/Microsoft/WinGet/Packages/BrechtSanders.WinLibs.POSIX.UCRT_Microsoft.Winget.Source_8wekyb3d8bbwe/mingw64/bin/ctest">ctest · observed</span>
+       </div>
+       <p class="legend">
+         <b>observed</b> — our shim wins PATH resolution; exit codes are ground truth.<br>
+         <b>shadowed</b> — the command exists but something else wins; not observed.<br>
+         <b>absent</b> — measured: not installed.<br>
+         <b>unknown</b> — we could not measure; this says nothing about the command, only about LODESTAR.
+       </p></div>
+  <div class="panel" style="margin-top:14px">
+    <h2>Session metadata</h2>
+    <div class="kv-grid"><div class="kv"><span class="kv-k">Runtime</span><span class="kv-v mono">node</span></div><div class="kv"><span class="kv-k">Model</span><span class="kv-v mono">—</span></div><div class="kv"><span class="kv-k">Runtime version</span><span class="kv-v mono">—</span></div><div class="kv"><span class="kv-k">Machine</span><span class="kv-v mono">7b442296b722cf37</span></div><div class="kv"><span class="kv-k">Git HEAD at start</span><span class="kv-v mono">21431c77c969</span></div><div class="kv"><span class="kv-k">Started</span><span class="kv-v mono">17/7/2026, 12:11:56 am</span></div><div class="kv"><span class="kv-k">Session ended</span><span class="kv-v mono">yes</span></div><div class="kv"><span class="kv-k">Events · commands · files</span><span class="kv-v mono">10 · 2 · 1</span></div></div>
+  </div>
+  <div class="panel" style="margin-top:14px">
+    <h2><svg class="ic"><use href="#i-shield"/></svg> What this does and does not prove</h2>
+    <p class="meta">LODESTAR runs as the same OS user as the agent, so it produces a
+    <b style="color:var(--text)">tamper-evident</b> record — not a tamper-proof one. Alteration leaves a mark; it is not
+    prevented. Against an agent that confabulates, this evidence is sound. Against a
+    determined attacker with your user account, it is not, and V0 does not claim to be.</p>
+  </div></div>
+  <div class="pane" id="p-sessions" hidden><div class="card-table"><table class="sessions"><thead><tr>
+      <th style="width:56px">#</th><th style="width:170px">When</th><th>Runtime</th>
+      <th style="width:70px">Facts</th><th style="width:66px">Files</th>
+      <th style="width:88px">Commands</th><th style="width:118px">Record</th>
+    </tr></thead><tbody>
+    <tr class="current">
+          <td class="n">001</td>
+          <td class="tl-time">17/7/2026, 12:11:56 am</td>
+          <td class="mono">node</td>
+          <td class="num">2</td>
+          <td class="meta num">1</td>
+          <td class="meta num">2</td>
+          <td><span class="status DEGRADED" style="font-size:9.5px;padding:3px 8px">DEGRADED</span></td>
+        </tr>
+  </tbody></table></div>
+  <p class="meta" style="margin-top:14px">This is an exported file, so other sessions
+         are listed but not linked — there is no server behind it.</p></div>
+
+  <footer>
+    Generated 17/7/2026, 12:12:03 am by LODESTAR — a tamper-evident execution history.<br>
+    Every statement on this page is derived from recorded events; nothing is inferred from
+    the agent's narration.
+  </footer>
+</div>
+<script>
+// Tabs, and the URL fragment that names one. This is the entire client-side program:
+// it shows and hides panes. It computes nothing — every word on this page was decided by
+// the report model before the HTML was written. See D-054.
+(function () {
+  function select(paneId) {
+    var found = false;
+    document.querySelectorAll('.pane').forEach(function (p) {
+      var match = p.id === paneId;
+      p.hidden = !match;
+      if (match) found = true;
+    });
+    document.querySelectorAll('.tab').forEach(function (t) {
+      t.setAttribute('aria-selected', String(t.dataset.pane === paneId));
+    });
+    return found;
+  }
+
+  document.querySelectorAll('.tab').forEach(function (tab) {
+    tab.addEventListener('click', function () {
+      select(tab.dataset.pane);
+      // The pane you are looking at belongs in the URL: a link to "the diff of that
+      // session" is worth more than a link to "that session, now go click".
+      history.replaceState(null, '', '#' + tab.dataset.pane.replace(/^p-/, ''));
+    });
+  });
+
+  // A fragment on load wins over the default pane. An unknown fragment is ignored rather
+  // than left showing nothing.
+  //
+  // It also scrolls. A deep link that selects the pane and leaves you at the top of the
+  // page has answered a question you did not ask — you followed a link to the diff, so put
+  // the diff on screen. Only on load: scrolling on every tab click would be motion the
+  // reader did not ask for.
+  var wanted = location.hash.replace(/^#/, '');
+  if (wanted && select('p-' + wanted)) {
+    var tabs = document.querySelector('.tabs');
+    if (tabs) tabs.scrollIntoView({ block: 'start' });
+  }
+})();
+</script>
+</body>
+</html>

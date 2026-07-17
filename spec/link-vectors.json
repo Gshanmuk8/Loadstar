@@ -1,0 +1,113 @@
+{
+  "comment": "Golden vectors for the lodestar-link object — GRAPH-SPEC Part A §5 (M4). The `canonical` vector is the load-bearing conformance case: an independent implementation MUST canonicalize these exact fields and compute this exact linkId (sha256 of the canonical form minus linkId, identical construction to recordId). Changing `expectedLinkId` is a format change and needs a DECISIONS entry. The `reject` cases pin verify-on-add: a link that is not well-formed, or whose id does not match its content, is refused with a stated verdict. Behavioral scenarios (retraction, same-repo merge, distinct suppression) are exercised in src/record/link.test.ts and src/graph/*.test.ts where dependent link ids can be minted.",
+  "canonical": {
+    "link": {
+      "format": "lodestar-link",
+      "formatVersion": 1,
+      "author": "alice",
+      "ts": "2026-07-20T00:00:00.000Z",
+      "type": "identity:same-repo",
+      "from": "evidence:repo/github.com/acme/infra",
+      "to": "evidence:repo/github.com/acme/platform",
+      "reason": "acme/infra was renamed to acme/platform"
+    },
+    "expectedLinkId": "fd3294702b0a0d622d35d2aff5bdc27efe3d7646098a73c6d8e1ca2bfc29f47b"
+  },
+  "reject": [
+    {
+      "name": "wrong format marker",
+      "value": { "format": "not-a-link", "formatVersion": 1 },
+      "expectVerdict": "invalid"
+    },
+    {
+      "name": "unsupported version",
+      "value": {
+        "format": "lodestar-link",
+        "formatVersion": 2,
+        "linkId": "0000000000000000000000000000000000000000000000000000000000000000",
+        "author": "a",
+        "ts": "2026-07-20T00:00:00.000Z",
+        "type": "relates-to",
+        "from": "evidence:record/0000000000000000000000000000000000000000000000000000000000000000",
+        "to": "https://example.com",
+        "reason": ""
+      },
+      "expectVerdict": "invalid"
+    },
+    {
+      "name": "empty author",
+      "value": {
+        "format": "lodestar-link",
+        "formatVersion": 1,
+        "linkId": "0000000000000000000000000000000000000000000000000000000000000000",
+        "author": "",
+        "ts": "2026-07-20T00:00:00.000Z",
+        "type": "relates-to",
+        "from": "evidence:record/1111111111111111111111111111111111111111111111111111111111111111",
+        "to": "https://example.com",
+        "reason": ""
+      },
+      "expectVerdict": "invalid"
+    },
+    {
+      "name": "identity link with non-repo endpoints",
+      "value": {
+        "format": "lodestar-link",
+        "formatVersion": 1,
+        "linkId": "0000000000000000000000000000000000000000000000000000000000000000",
+        "author": "a",
+        "ts": "2026-07-20T00:00:00.000Z",
+        "type": "identity:same-repo",
+        "from": "evidence:record/1111111111111111111111111111111111111111111111111111111111111111",
+        "to": "evidence:record/2222222222222222222222222222222222222222222222222222222222222222",
+        "reason": ""
+      },
+      "expectVerdict": "invalid"
+    },
+    {
+      "name": "retracts pointing at a non-link address",
+      "value": {
+        "format": "lodestar-link",
+        "formatVersion": 1,
+        "linkId": "0000000000000000000000000000000000000000000000000000000000000000",
+        "author": "a",
+        "ts": "2026-07-20T00:00:00.000Z",
+        "type": "retracts",
+        "from": "evidence:repo/github.com/acme/x",
+        "to": "evidence:record/1111111111111111111111111111111111111111111111111111111111111111",
+        "reason": ""
+      },
+      "expectVerdict": "invalid"
+    },
+    {
+      "name": "from is not an evidence address",
+      "value": {
+        "format": "lodestar-link",
+        "formatVersion": 1,
+        "linkId": "0000000000000000000000000000000000000000000000000000000000000000",
+        "author": "a",
+        "ts": "2026-07-20T00:00:00.000Z",
+        "type": "relates-to",
+        "from": "just a string",
+        "to": "evidence:record/1111111111111111111111111111111111111111111111111111111111111111",
+        "reason": ""
+      },
+      "expectVerdict": "invalid"
+    },
+    {
+      "name": "tampered id — well-formed but content hashes elsewhere",
+      "value": {
+        "format": "lodestar-link",
+        "formatVersion": 1,
+        "linkId": "1111111111111111111111111111111111111111111111111111111111111111",
+        "author": "alice",
+        "ts": "2026-07-20T00:00:00.000Z",
+        "type": "identity:same-repo",
+        "from": "evidence:repo/github.com/acme/infra",
+        "to": "evidence:repo/github.com/acme/platform",
+        "reason": "acme/infra was renamed to acme/platform"
+      },
+      "expectVerdict": "altered"
+    }
+  ]
+}

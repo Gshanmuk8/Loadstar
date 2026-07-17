@@ -1,0 +1,45 @@
+{
+  // The IDE and `npm run typecheck` use this. It covers EVERYTHING, tests included.
+  //
+  // Tests were previously excluded here, which had two consequences that both look like
+  // "the editor is broken":
+  //   1. `npm run typecheck` silently skipped every test file — false confidence.
+  //   2. The editor had no config for those files, so it fell back to bare defaults
+  //      with no `types: node` and no module resolution, and painted red squiggles
+  //      across all of them.
+  //
+  // Tests are excluded from the BUILD instead — see tsconfig.build.json.
+  "compilerOptions": {
+    "target": "ES2023",
+    "lib": ["ES2023"],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "rootDir": "src",
+    "outDir": "dist",
+
+    // Explicit, not discovered. Without this, an editor that indexed before
+    // `npm install` finished caches "no @types/node" and reports phantom errors on
+    // `process` and `node:sqlite` that tsc does not see.
+    "types": ["node"],
+
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "exactOptionalPropertyTypes": false,
+
+    "declaration": true,
+    "sourceMap": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "verbatimModuleSyntax": true,
+
+    // Typecheck-only: this config never emits, so no need to resolve output paths.
+    "noEmit": true
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist"]
+}
