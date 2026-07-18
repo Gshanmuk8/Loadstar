@@ -21,10 +21,10 @@
  */
 
 import { spawnSync } from 'node:child_process'
-import { accessSync, constants as fsConstants, existsSync, statSync } from 'node:fs'
+import { existsSync } from 'node:fs'
 import { constants } from 'node:os'
-import { delimiter, join } from 'node:path'
 import { randomUUID } from 'node:crypto'
+import { isBatchTarget, resolveOnPath, spawnSpec, unsafeBatchArg } from './exec-command.js'
 import { openDatabase } from '../storage/db.js'
 import { SqliteEventStore } from '../storage/event-store.js'
 import { classifyCommand } from './classify.js'
@@ -48,66 +48,12 @@ import {
  * Find the real binary, skipping our own shim directory.
  *
  * Without the skip, the shim would find itself and fork bomb. This is the single most
- * dangerous line in the file.
+ * dangerous line in the file. The scan itself lives in exec-command.ts (D-072) — it is
+ * the same resolution the launcher needs, and two copies of it is how the launcher
+ * shipped without one.
  */
 function findReal(command: string, shimDir: string): string | null {
-  const path = process.env['PATH'] ?? ''
-  const exts =
-    process.platform === 'win32'
-      ? (process.env['PATHEXT'] ?? '.COM;.EXE;.BAT;.CMD').split(';')
-      : ['']
-
-  const shimNorm = norm(shimDir)
-
-  for (const dir of path.split(delimiter)) {
-    if (!dir) continue
-    if (norm(dir) === shimNorm) continue // never resolve back into ourselves
-    for (const ext of exts) {
-      const candidate = join(dir, command + ext.toLowerCase())
-      if (isExecutableFile(candidate)) return candidate
-      const upper = join(dir, command + ext)
-      if (isExecutableFile(upper)) return upper
-    }
-  }
-  return null
-}
-
-/**
- * Is this path something a shell would actually execute?
- *
- * ---------------------------------------------------------------------------
- * WHY `existsSync` WAS NOT ENOUGH
- * ---------------------------------------------------------------------------
- *
- * This used `existsSync`, which is true for directories and for files with no execute
- * bit. On POSIX `exts` is `['']`, so a *directory* named `node` in an earlier PATH entry
- * — or a non-`+x` file named `go` — was returned as "the real binary". `spawnSync` then
- * failed EACCES/EISDIR, and the shim reported "the command did NOT run" with exit 126.
- *
- * A real shell does not do that. It skips the entry and keeps scanning, so the command
- * works without LODESTAR and breaks with it — the one asymmetry the wedge cannot afford.
- *
- * So the check answers the question the shell asks: is it a regular file, and can this
- * process execute it? `X_OK` is meaningless on Windows (`accessSync` reports every
- * readable file as executable), which is fine — there, extension *is* the executability
- * contract, and PATHEXT has already filtered for it.
- *
- * Errors resolve to `false`: an unreadable or vanished candidate is not a binary we can
- * run, and guessing otherwise re-creates the bug this replaced.
- */
-function isExecutableFile(candidate: string): boolean {
-  try {
-    if (!statSync(candidate).isFile()) return false
-    if (process.platform === 'win32') return true
-    accessSync(candidate, fsConstants.X_OK)
-    return true
-  } catch {
-    return false
-  }
-}
-
-function norm(p: string): string {
-  return p.split('\\').join('/').replace(/\/+$/, '').toLowerCase()
+  return resolveOnPath(command, { excludeDir: shimDir })
 }
 
 interface Recorder {
@@ -263,124 +209,22 @@ function makeRecorder(): Recorder {
 }
 
 /**
- * Quote a token for cmd.exe.
- *
- * ---------------------------------------------------------------------------
- * `\"` IS THE WRONG ESCAPE HERE, AND IT WAS AN ARBITRARY-EXECUTION BUG
- * ---------------------------------------------------------------------------
- *
- * This function used to emit `"${token.replace(/"/g, '\\"')}"`. That is the **MSVCRT**
- * escape — correct for a C program parsing its own argv, and meaningless to cmd.exe,
- * which tracks quote state by counting `"` and does not honor the backslash.
- *
- * So the quote closed early and the remainder was parsed as shell text:
- *
- *   arg:  x"&echo PWNED&"y
- *   line: npm.cmd "x\"&echo PWNED&\"y"
- *         → cmd sees the quote close after `x\`, runs `echo PWNED` as a command,
- *           and npm receives a truncated argument.
- *
- * Reachable for every `.cmd`/`.bat` target — on Windows that is npm, npx, pnpm, yarn,
- * and tsc, i.e. the common case. An agent passing a crafted `--define` value could run
- * arbitrary commands *because LODESTAR was watching*. A recorder that creates the
- * vulnerability it exists to observe is the worst possible failure for this product.
- *
- * The correct cmd.exe escape for a literal quote inside a quoted string is `""`, which
- * also survives the batch `%*` splice and the final MSVCRT parse. This is the same
- * conclusion Rust's standard library reached for `make_bat_command_line` after
- * CVE-2024-24576 ("BatBadBut"), and we follow it deliberately rather than inventing our
- * own scheme in a place where being clever has already cost us once.
- */
-function cmdQuote(token: string): string {
-  if (token.length && !CMD_NEEDS_QUOTING.test(token)) return token
-  return `"${token.replace(/"/g, '""')}"`
-}
-
-/**
- * Characters that force quoting.
- *
- * Wider than the old charclass, which omitted `,` `;` `=` `!` — all of which cmd treats
- * as token separators or expansion syntax when unquoted.
- */
-const CMD_NEEDS_QUOTING = /[\s&|<>()^"%,;=!]/
-
-/**
- * Argument content that cannot be passed through `cmd /c` faithfully, at all.
- *
- * ---------------------------------------------------------------------------
- * WHY THIS REFUSES INSTEAD OF DOING ITS BEST
- * ---------------------------------------------------------------------------
- *
- * `%VAR%` expansion happens while cmd.exe parses the line, and there is no escape for it
- * there — `%%` works only inside a batch file, not on a `/c` command line. So `%PATH%`
- * as an argument becomes its value before the target program ever sees it. A newline is
- * worse: it terminates the command outright.
- *
- * That leaves three options, and only one is acceptable for a trust product:
- *
- *   - Expand it silently. The command runs with arguments the developer did not write,
- *     and LODESTAR records the *pre*-expansion argv — so the record disagrees with what
- *     actually ran. The record lying is the one unrecoverable failure.
- *   - Strip or mangle it. Same problem, quieter.
- *   - Refuse, loudly, and say why.
- *
- * Rust's standard library reaches the same conclusion and rejects `%` in batch arguments
- * outright. We are narrower: only a *variable-shaped* `%NAME%` can expand, so `50% done`,
- * `%20` in a URL, and a bare trailing `%` all still work. Only the genuinely unfixable
- * case is refused.
- *
- * This does break a command, which the governing rule at the top of this file forbids —
- * but that rule is about *recording* failure ("the database is locked, the disk is
- * full"), where execution is still correct. Here execution itself cannot be made
- * correct. Refusing is the honest failure; running something the developer did not ask
- * for is not. It is also loud, rare, and tells them exactly how to proceed.
- */
-const BATCH_UNSAFE_ARG = /%[A-Za-z_][A-Za-z0-9_]*%|[\r\n]/
-
-function isBatchTarget(real: string): boolean {
-  return process.platform === 'win32' && /\.(cmd|bat)$/i.test(real)
-}
-
-/** The first argument that cannot survive `cmd /c`, or null if all of them can. */
-function unsafeBatchArg(args: readonly string[]): string | null {
-  for (const a of args) if (BATCH_UNSAFE_ARG.test(a)) return a
-  return null
-}
-
-/**
  * Run the real command, correctly, on both platforms.
  *
- * ---------------------------------------------------------------------------
- * WINDOWS BATCH WRAPPERS — two bugs live here, both of which BROKE the command
- * ---------------------------------------------------------------------------
- *
- * On Windows `npm` is `npm.cmd`, a batch file. Two failures were hit in sequence during
- * Phase 6, and both are worth remembering because both were silent-ish:
- *
- *  1. `spawnSync(real, args)` with `shell: false` — Node refuses to execute .cmd/.bat
- *     directly (hardened against batch-file command injection). The spawn fails,
- *     `status` is null, and `npm test` never runs at all.
- *
- *  2. `spawnSync(real, args, { shell: true })` — Node does NOT quote the executable
- *     path, so `C:\Program Files\nodejs\npm.cmd` reaches cmd.exe unquoted and splits at
- *     the space: `'C:\Program' is not recognized as an internal or external command`.
- *     The command still never runs.
- *
- * So batch files are invoked through cmd.exe explicitly, with every token quoted by us
- * and `windowsVerbatimArguments` telling Node to stop "helping". `/s` makes cmd strip
- * the outer quote pair; `/d` skips AutoRun scripts that could alter behavior.
- *
- * Native executables take the direct path — no shell, no quoting, nothing to get wrong.
+ * The mechanics — batch detection, cmd.exe wrapping, quoting — live in exec-command.ts
+ * (D-072), where the launcher shares them. The refusal rule stays HERE: refusing does
+ * break a command, which the governing rule at the top of this file forbids — but that
+ * rule is about *recording* failure ("the database is locked, the disk is full"), where
+ * execution is still correct. When execution itself cannot be made faithful (`%VAR%` in
+ * an argument to a batch target), refusing is the honest failure; running something the
+ * developer did not write is not. See unsafeBatchArg in exec-command.ts.
  */
 function execute(real: string, args: string[]): ReturnType<typeof spawnSync> {
-  if (!isBatchTarget(real)) {
-    return spawnSync(real, args, { stdio: 'inherit', shell: false })
-  }
-
-  const line = [real, ...args].map(cmdQuote).join(' ')
-  return spawnSync(process.env['ComSpec'] ?? 'cmd.exe', ['/d', '/s', '/c', `"${line}"`], {
+  const spec = spawnSpec(real, args)
+  return spawnSync(spec.file, spec.args, {
     stdio: 'inherit',
-    windowsVerbatimArguments: true,
+    shell: false,
+    windowsVerbatimArguments: spec.windowsVerbatimArguments,
   })
 }
 

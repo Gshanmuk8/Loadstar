@@ -1,6 +1,6 @@
 {
   "name": "@gshanmukha/lodestar",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Know what your AI actually did. A tamper-evident execution history for AI coding agent sessions.",
   "type": "module",
   "license": "Apache-2.0",
@@ -19,7 +19,7 @@
     "node": ">=22.13"
   },
   "bin": {
-    "lodestar": "./dist/cli/index.js"
+    "lodestar": "dist/cli/index.js"
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

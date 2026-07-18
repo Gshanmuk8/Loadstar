@@ -2530,6 +2530,52 @@ commit and says so — a trust product does not invent provenance it does not ha
 
 ---
 
+## D-072 — The launcher executes agents through the shim's execution path ✅
+
+**Context.** First Windows field report after the 0.1.0 release: `lodestar init`
+worked, `lodestar claude` died with `spawn claude ENOENT` — in a session where
+`claude --version` succeeded. npm installs CLIs on Windows as `.cmd` batch shims
+(`claude` is `claude.cmd`), and `ProcessRecorder.run` spawned the bare name with
+`shell: false`. Node hands that to CreateProcess, which resolves `.exe`/`.com` only —
+it does not consult PATHEXT the way a shell (or `where.exe`, which `isOnPath` uses)
+does. So the preflight check passed and the launch failed, on the product's front
+door, for every npm-installed agent on Windows.
+
+The shim runner had already solved this exact problem in Phase 6, twice over: it
+resolves commands by scanning PATH × PATHEXT itself, and it executes batch targets
+through `cmd.exe /d /s /c` with its own quoting (the D-038 history, the BatBadBut
+`""` escape, the `%VAR%` refusal). None of that reached the launcher, one directory
+away. Two spawn sites had one execution problem and only one had the fix.
+
+**Decision.** Execution mechanics live in one module, `src/recorder/exec-command.ts`,
+and both spawn sites use it:
+
+- `resolveOnPath` — the PATH × PATHEXT scan (generalizing the shim's `findReal`;
+  the shim passes its own directory as `excludeDir` to keep the fork-bomb guard).
+  The launcher resolves against the **agent's** env, not ours — the record must name
+  what the child's PATH chose, and the two can differ.
+- `spawnSpec` — direct spawn for native executables; explicit `cmd.exe /d /s /c`
+  with our quoting and `windowsVerbatimArguments` for `.cmd`/`.bat` targets.
+- `unsafeBatchArg` — the launcher refuses `%VAR%`/newline arguments to a batch
+  agent, loudly, same rule and reasoning as the shim: running something the
+  developer did not write, then recording what they wrote, would put a lie in the
+  ledger.
+- The launcher records `resolvedPath` on the agent's own `process.spawn`/
+  `process.exit` events, as the shim already does for intercepted commands (D-043):
+  `claude` and `claude.cmd` are different claims about what ran.
+
+The regression is pinned by tests in `exec-command.test.ts`: a fake `claude.cmd` on
+PATH must launch through `ProcessRecorder.run` on Windows, with arguments and exit
+code intact.
+
+**Rejected:** `shell: true` (Node leaves the executable path unquoted — the exact
+Phase 6 bug 2, `'C:\Program' is not recognized`); shelling out to `where.exe` per
+launch (answers for our env, not the child's, and costs a process to learn less);
+fixing the launcher locally without extracting the module (a second copy of quoting
+logic that has already had one command-injection bug is how the next one ships).
+
+---
+
 ## D-011 — Product location ⏸
 
 LODESTAR lives at `Desktop/Loadstar/LODESTAR`, a sibling of `claude-workspace` rather

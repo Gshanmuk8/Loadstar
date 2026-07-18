@@ -82,7 +82,10 @@ export async function cmdReport(args: string[]): Promise<number> {
       out(`  ${green('✓')} Evidence record written to ${bold(path)}`)
       out(dim(`    record ${record.recordId}`))
       out(dim('    Canonical, content-addressed, self-describing. Verify it anywhere with the'))
-      out(dim('    standalone verifier — no LODESTAR install required. See docs/RECORD-SPEC.md.'))
+      // Point at what an npm user actually has: the verifier ships in the package; the
+      // spec lives in the repo. `docs/RECORD-SPEC.md` is a path only a repo clone has.
+      out(dim('    standalone verifier that ships with this package (verifier/lodestar-verify.mjs).'))
+      out(dim('    Spec: https://github.com/Gshanmuk8/Loadstar'))
       out()
       // Same contract as the terminal report: a broken chain must be visible to scripts.
       return record.evidence.integrity.status === 'BROKEN' ? 2 : 0

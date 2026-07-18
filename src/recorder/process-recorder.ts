@@ -34,6 +34,7 @@
  */
 
 import { spawn } from 'node:child_process'
+import { isBatchTarget, resolveOnPath, spawnSpec, unsafeBatchArg } from './exec-command.js'
 import type { RecordingContext } from './context.js'
 import { classifyCommand } from './classify.js'
 import { redactCommand, redactText } from '../core/redact.js'
@@ -96,11 +97,37 @@ export class ProcessRecorder {
     const safe = redactCommand(command, args)
     const full = safe.value.full
 
-    const child = spawn(command, args, {
+    // ---- resolve what will actually execute — the D-072 launch bug ------------
+    //
+    // `spawn(command, …, { shell: false })` hands the bare name to CreateProcess, which
+    // resolves `.exe` only. On Windows an npm-installed agent is a `.cmd` batch shim —
+    // `claude` IS `claude.cmd` — so `lodestar claude` died with ENOENT on the very
+    // machine where `claude` worked in every terminal. The resolution a shell would do
+    // has to happen here, against the PATH the CHILD gets (the agent env, not ours),
+    // and a batch target has to go through cmd.exe like the shim already does.
+    const env = opts.env ?? process.env
+    const resolved = process.platform === 'win32' ? resolveOnPath(command, { env }) : null
+
+    if (resolved && isBatchTarget(resolved)) {
+      // cmd.exe would expand `%VAR%` or truncate at a newline before the agent could
+      // see the argument. Refuse rather than launch something the developer did not
+      // write — same rule, same reasoning as the shim (exec-command.ts).
+      const bad = unsafeBatchArg(args)
+      if (bad !== null) {
+        throw new Error(
+          `cannot launch '${command}' faithfully: argument '${bad}' contains %VAR% or a newline, ` +
+            `which cmd.exe rewrites before ${command} can see it. Run ${command} directly instead.`,
+        )
+      }
+    }
+
+    const spec = spawnSpec(resolved ?? command, args, env)
+    const child = spawn(spec.file, spec.args, {
       cwd,
-      env: opts.env ?? process.env,
+      env,
       stdio: opts.inherit ? 'inherit' : 'pipe',
       shell: false,
+      windowsVerbatimArguments: spec.windowsVerbatimArguments,
     })
 
     const spawnPayload: ProcessSpawnPayload = {
@@ -109,6 +136,10 @@ export class ProcessRecorder {
       cwd,
     }
     if (child.pid !== undefined) spawnPayload.pid = child.pid
+    // What PATH resolution actually chose, when we did the choosing. The shim records
+    // this for every intercepted command (D-043); the agent's own launch deserves the
+    // same honesty — `claude` and `claude.cmd` are different claims about what ran.
+    if (resolved) spawnPayload.resolvedPath = resolved
 
     this.context.emit({
       source: 'process',
@@ -148,6 +179,7 @@ export class ProcessRecorder {
       // shim-recorded run of the same command.
       cwd,
     }
+    if (resolved) exitPayload.resolvedPath = resolved
 
     // Captured output is the likeliest place for a credential to surface: tools echo
     // connection strings, curl prints request headers, and stack traces carry both. The

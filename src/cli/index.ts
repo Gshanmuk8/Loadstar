@@ -16,6 +16,15 @@
  */
 
 import './suppress-warnings.js'
+import { unsupportedNodeReason } from './node-guard.js'
+
+// Before the dynamic import: main.js's module graph is what loads node:sqlite, and on
+// an old Node that import is the crash this guard exists to prevent.
+const reason = unsupportedNodeReason(process.versions.node)
+if (reason) {
+  process.stderr.write(reason)
+  process.exit(1)
+}
 
 const code = await (await import('./main.js')).run(process.argv.slice(2))
 process.exit(code)

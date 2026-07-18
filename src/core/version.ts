@@ -8,4 +8,4 @@
  * Keep in sync with package.json manually; there is no runtime package.json read on
  * purpose — `dist/` must not reach outside itself for a file that may not ship.
  */
-export const LODESTAR_VERSION = '0.1.0'
+export const LODESTAR_VERSION = '0.1.1'
