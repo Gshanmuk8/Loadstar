@@ -78,6 +78,8 @@ export class SqliteEventStore {
     runtimeId: string
     cwd: string
     mission?: string | null
+    /** The wrapper's own PID — read-time liveness only, never evidence (D-074). */
+    wrapperPid?: number | null
   }): Session {
     const row = this.db.prepare('SELECT MAX(number) AS n FROM sessions').get() as {
       n: number | null
@@ -93,12 +95,13 @@ export class SqliteEventStore {
       endedAt: null,
       exitCode: null,
       cwd: input.cwd,
+      wrapperPid: input.wrapperPid ?? null,
     }
 
     this.db
       .prepare(
-        `INSERT INTO sessions (id, number, runtime_id, mission, started_at, cwd)
-         VALUES (?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO sessions (id, number, runtime_id, mission, started_at, cwd, wrapper_pid)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         session.id,
@@ -107,6 +110,7 @@ export class SqliteEventStore {
         session.mission ?? null,
         session.startedAt,
         session.cwd,
+        session.wrapperPid ?? null,
       )
 
     return session
@@ -161,6 +165,7 @@ export class SqliteEventStore {
       endedAt: (r['ended_at'] as string | null) ?? null,
       exitCode: (r['exit_code'] as number | null) ?? null,
       cwd: r['cwd'] as string,
+      wrapperPid: (r['wrapper_pid'] as number | null) ?? null,
     }
   }
 

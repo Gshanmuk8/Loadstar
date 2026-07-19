@@ -12,7 +12,7 @@ import { SqliteEventStore } from '../../storage/event-store.js'
 import { findProjectRoot, paths } from '../../core/project.js'
 import { readConfig } from '../../core/config.js'
 import { out, dim, bold, green, red, yellow } from '../ui.js'
-import { requireProject } from './shared.js'
+import { describeOpenSession, openSessionState, requireProject } from './shared.js'
 
 export function cmdStatus(): number {
   const root = findProjectRoot()
@@ -40,10 +40,17 @@ export function cmdStatus(): number {
       return 0
     }
 
-    const running = !latest.endedAt
+    const open = !latest.endedAt
+    const state = open ? openSessionState(latest) : null
     const events = store.query({ sessionId: latest.id })
 
-    out(`${dim(running ? 'Current session:' : 'Last session:')}\n#${String(latest.number).padStart(3, '0')}`)
+    out(
+      `${dim(state === 'running' ? 'Current session:' : 'Last session:')}\n#${String(latest.number).padStart(3, '0')}`,
+    )
+    // An open session whose wrapper died must never read as "current" (D-074).
+    if (state && state !== 'running') {
+      out(yellow(describeOpenSession(state, latest.wrapperPid)))
+    }
     out()
     out(`${dim('Events captured:')}\n${events.length}`)
     out()

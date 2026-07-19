@@ -11,7 +11,7 @@ import { DatabaseSync } from 'node:sqlite'
 import { mkdirSync } from 'node:fs'
 import { dirname } from 'node:path'
 
-export const SCHEMA_VERSION = 1
+export const SCHEMA_VERSION = 2
 
 /**
  * Append-only is enforced in three places, on purpose:
@@ -30,14 +30,15 @@ CREATE TABLE IF NOT EXISTS meta (
 );
 
 CREATE TABLE IF NOT EXISTS sessions (
-  id         TEXT PRIMARY KEY,
-  number     INTEGER NOT NULL UNIQUE,
-  runtime_id TEXT NOT NULL,
-  mission    TEXT,
-  started_at TEXT NOT NULL,
-  ended_at   TEXT,
-  exit_code  INTEGER,
-  cwd        TEXT NOT NULL
+  id          TEXT PRIMARY KEY,
+  number      INTEGER NOT NULL UNIQUE,
+  runtime_id  TEXT NOT NULL,
+  mission     TEXT,
+  started_at  TEXT NOT NULL,
+  ended_at    TEXT,
+  exit_code   INTEGER,
+  cwd         TEXT NOT NULL,
+  wrapper_pid INTEGER
 );
 
 CREATE TABLE IF NOT EXISTS events (
@@ -97,11 +98,34 @@ export function openDatabase(path: string): DatabaseSync {
   // fail instantly with SQLITE_BUSY, silently losing an event. Wait instead.
   db.exec('PRAGMA busy_timeout = 5000;')
   db.exec(SCHEMA)
+  migrate(db)
 
-  db.prepare('INSERT OR IGNORE INTO meta (key, value) VALUES (?, ?)').run(
+  db.prepare('INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)').run(
     'schema_version',
     String(SCHEMA_VERSION),
   )
 
   return db
+}
+
+/**
+ * Bring a pre-existing database up to the current schema.
+ *
+ * v1 → v2 (D-074): `sessions.wrapper_pid`, so an open session whose wrapper died can
+ * be told apart from one that is genuinely still running. `CREATE TABLE IF NOT
+ * EXISTS` above covers fresh databases only — it never alters an existing table — so
+ * the presence of the column is checked directly rather than trusted from a version
+ * number: a column either exists or it does not, and asking the table is the check
+ * that cannot drift.
+ *
+ * Migrations here touch the SESSIONS table only. The events table is append-only and
+ * hash-chained; a migration that rewrote it would be indistinguishable from tampering,
+ * and adding columns to it means extending `eventHashBody` — a record-format event
+ * (STABILITY.md), not a migration.
+ */
+function migrate(db: DatabaseSync): void {
+  const cols = db.prepare(`PRAGMA table_info(sessions)`).all() as Array<{ name: string }>
+  if (!cols.some((c) => c.name === 'wrapper_pid')) {
+    db.exec('ALTER TABLE sessions ADD COLUMN wrapper_pid INTEGER')
+  }
 }

@@ -39,6 +39,7 @@ import { buildReport, type SessionReport } from '../../facts/report.js'
 import { buildRecord, serializeRecord } from '../../record/index.js'
 import { serveReport, exportHtml } from '../../report/server.js'
 import { out, errOut, dim, bold, warn, red, yellow, green, cyan, formatWhen } from '../ui.js'
+import { plural, wrapText, renderChanges, renderCommands, renderLimitations, renderOutcome, renderIntegrity } from '../render.js'
 import { requireProject } from './shared.js'
 
 export async function cmdReport(args: string[]): Promise<number> {
@@ -205,8 +206,11 @@ function render(r: SessionReport): void {
 
   renderVerdict(r)
   renderFacts(r)
+  renderCommands(r)
+  renderChanges(r)
   renderLimitations(r)
   renderInterference(r)
+  renderOutcome(r)
   renderIntegrity(r)
 
   out()
@@ -310,23 +314,8 @@ function renderFacts(r: SessionReport): void {
   }
 }
 
-/**
- * What we could not determine, printed whether or not there are facts.
- *
- * This block is the reason an empty report cannot imply success. `limitations()` says what
- * the fact engine could not compute; `integrity.degraded` says what the record itself is
- * missing. They are different questions and both get answered.
- */
-function renderLimitations(r: SessionReport): void {
-  const notes = [...r.limitations, ...r.integrity.degraded]
-  if (!notes.length) return
-
-  out(bold(`  Limitations (${notes.length})`))
-  out(dim('  What LODESTAR could not determine. Not evidence of absence.'))
-  out()
-  for (const n of notes) out(`  ${yellow('?')} ${wrapText(n, 4)}`)
-  out()
-}
+// renderLimitations moved to ../render.ts (D-073): the DEGRADED integrity line points
+// at the Limitations block, so every command that prints one must print the other.
 
 /** LODESTAR's own footprint, surfaced beside the facts and never subtracted from them (D-039). */
 function renderInterference(r: SessionReport): void {
@@ -339,53 +328,6 @@ function renderInterference(r: SessionReport): void {
   out()
 }
 
-function renderIntegrity(r: SessionReport): void {
-  const { status, chain } = r.integrity
-  out()
-  switch (status) {
-    case 'VERIFIED':
-      out(`  ${green('VERIFIED')}  ${dim(`evidence consistent · ${chain.eventsChecked} events, chain intact`)}`)
-      out(dim(`            record ${r.recordId.slice(0, 16)}… — the citable id of this evidence`))
-      break
-    case 'DEGRADED':
-      // Do NOT count the notes here. The block above merges `limitations` (what the fact
-      // engine could not compute) with `integrity.degraded` (what the record is missing),
-      // and a count taken from one of the two lists reads as a count of both — this line
-      // said "1 gap" above a list of two. Pointing at the block is honest; a number that
-      // disagrees with what the user can see costs more trust than it buys.
-      out(`  ${yellow('DEGRADED')}  ${dim('some evidence unavailable · see Limitations above')}`)
-      out(dim(`            the chain itself is intact across ${plural(chain.eventsChecked, 'event')}`))
-      break
-    case 'BROKEN':
-      out(`  ${red('BROKEN')}    ${bold('integrity failure detected')}`)
-      out(dim(`            ${chain.reason ?? 'the chain does not recompute'}`))
-      if (chain.brokenAt !== undefined) out(dim(`            first break at event #${chain.brokenAt}`))
-      out()
-      out(dim('  This record was altered after it was written. Nothing above it can be trusted.'))
-      break
-  }
-}
-
-/** `1 event` / `2 events`. Cosmetic; never changes a count. */
-function plural(n: number, noun: string): string {
-  return `${n} ${noun}${n === 1 ? '' : 's'}`
-}
-
-/** Wrap long prose to the terminal, indented. Cosmetic only — never changes meaning. */
-function wrapText(s: string, indent: number): string {
-  const width = Math.max(40, (process.stdout.columns ?? 80) - indent - 4)
-  const pad = ' '.repeat(indent)
-  const words = s.split(' ')
-  const lines: string[] = []
-  let line = ''
-  for (const w of words) {
-    if (line.length + w.length + 1 > width) {
-      lines.push(line)
-      line = w
-    } else {
-      line = line ? `${line} ${w}` : w
-    }
-  }
-  if (line) lines.push(line)
-  return lines.join(`\n${pad}`)
-}
+// renderIntegrity, plural, and wrapText moved to ../render.ts (D-073): replay and
+// explain print the same sections, and two wordings of one judgment is the drift
+// D-049 exists to prevent.

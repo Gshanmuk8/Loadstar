@@ -115,53 +115,62 @@ const CSS = `
    =========================================================================== */
 :root {
   color-scheme: dark;
-  /* Layered near-black with a faint cool cast — depth comes from surfaces, not borders. */
-  --bg: #07080b;
-  --bg-2: #0b0d12;
-  --surface: #0f1218;
-  --surface-2: #14171f;
-  --raised: #191d26;
-  --line: #232834;
-  --line-soft: #191d25;
-  --text: #f0f3f8;
-  --muted: #99a2b2;
-  --dim: #656d7d;
-  --faint: #3a4150;
-  --ok: #43c463;        --ok-bg: rgba(67,196,99,.11);   --ok-line: rgba(67,196,99,.32);
-  --warn: #f0b429;      --warn-bg: rgba(240,180,41,.11); --warn-line: rgba(240,180,41,.34);
-  --bad: #fb5a54;       --bad-bg: rgba(251,90,84,.11);   --bad-line: rgba(251,90,84,.36);
-  --accent: #8b93ff;    --accent-bg: rgba(139,147,255,.12);
-  /* Soft, layered elevation — a hairline top highlight plus a diffuse drop. */
-  --shadow-sm: 0 1px 2px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.02);
-  --shadow: 0 1px 2px rgba(0,0,0,.45), 0 12px 34px -18px rgba(0,0,0,.85), inset 0 1px 0 rgba(255,255,255,.025);
-  --shadow-lg: 0 2px 4px rgba(0,0,0,.4), 0 26px 60px -28px rgba(0,0,0,.9), inset 0 1px 0 rgba(255,255,255,.035);
-  --ring: 0 0 0 3px color-mix(in srgb, var(--accent) 32%, transparent);
+  /* Near-black canvas with a faint cool cast. Structure comes from hairlines, not shadow;
+     surfaces are barely-there steps in luminance. The precision-instrument register. */
+  --bg: #08090a;
+  --bg-2: #0c0d0f;
+  --surface: #0f1011;
+  --surface-2: #131416;
+  --raised: #191a1d;
+  --line: #23252a;       /* hairline ≈ rgba(255,255,255,.09) */
+  --line-soft: #1a1c1f;  /* the quietest divider */
+  --text: #f7f8f8;
+  --muted: #9a9ea6;
+  --dim: #6a6e76;
+  --faint: #43464d;
+  /* Semantics, calibrated — saturated enough to signal, never neon. Hue carries meaning. */
+  --ok: #4cb782;        --ok-bg: rgba(76,183,130,.13);   --ok-line: rgba(76,183,130,.28);
+  --warn: #e6a23c;      --warn-bg: rgba(230,162,60,.13);  --warn-line: rgba(230,162,60,.30);
+  --bad: #eb5757;       --bad-bg: rgba(235,87,87,.13);    --bad-line: rgba(235,87,87,.32);
+  /* One accent. A single indigo, used for selection, links, and exactly one tick. */
+  --accent: #828fff;    --accent-bg: rgba(94,106,210,.16);
+  --accent-2: #a3a0ff;
+  /* Shadow is reserved for things that truly float — never decoration. Mostly unused. */
+  --shadow-sm: 0 1px 2px rgba(0,0,0,.25);
+  --shadow: 0 2px 4px rgba(0,0,0,.25), 0 8px 24px -12px rgba(0,0,0,.5);
+  --shadow-lg: 0 8px 32px -10px rgba(0,0,0,.6);
+  --ring: 0 0 0 1px var(--accent), 0 0 0 4px color-mix(in srgb, var(--accent) 22%, transparent);
   --mono: ui-monospace, "SF Mono", SFMono-Regular, "Cascadia Code", "JetBrains Mono", Menlo, Consolas, monospace;
-  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI Variable Text", "Segoe UI", Inter, Roboto, "Helvetica Neue", sans-serif;
-  --r-sm: 7px; --r-md: 11px; --r-lg: 16px; --r-xl: 20px;
+  --sans: "Inter Variable", Inter, -apple-system, BlinkMacSystemFont, "Segoe UI Variable Text", "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  --r-sm: 6px; --r-md: 8px; --r-lg: 10px; --r-xl: 13px;
 }
 @media (prefers-color-scheme: light) {
   :root {
     color-scheme: light;
-    --bg: #f7f8fa;
-    --bg-2: #f2f4f7;
+    /* Light mode, same discipline: a soft near-white canvas, pure-white surfaces stepped
+       by hairlines, one accent. Clean, not clinical. */
+    --bg: #fbfbfc;
+    --bg-2: #f5f5f7;
     --surface: #ffffff;
-    --surface-2: #fbfcfd;
-    --raised: #f3f5f8;
-    --line: #e3e7ec;
-    --line-soft: #edeff3;
-    --text: #0d1117;
-    --muted: #56606d;
-    --dim: #838d99;
-    --faint: #c2c9d2;
-    --ok: #1a7f37; --ok-bg: rgba(26,127,55,.09); --ok-line: rgba(26,127,55,.28);
-    --warn: #9a6700; --warn-bg: rgba(154,103,0,.09); --warn-line: rgba(154,103,0,.28);
-    --bad: #cf222e; --bad-bg: rgba(207,34,46,.08); --bad-line: rgba(207,34,46,.3);
-    --accent: #4f46e5; --accent-bg: rgba(79,70,229,.08);
-    --shadow-sm: 0 1px 2px rgba(16,22,26,.06);
-    --shadow: 0 1px 2px rgba(16,22,26,.05), 0 12px 30px -18px rgba(16,22,26,.22);
-    --shadow-lg: 0 2px 4px rgba(16,22,26,.05), 0 26px 56px -28px rgba(16,22,26,.28);
-    --ring: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
+    --surface-2: #fafafb;
+    --raised: #f3f3f5;
+    --line: #e6e6e9;
+    --line-soft: #efeff1;
+    --text: #16171a;
+    --muted: #63666e;
+    --dim: #8a8d95;
+    --faint: #c3c5cb;
+    /* Semantics weighted for contrast on white. */
+    --ok: #2f9e6d;   --ok-bg: rgba(47,158,109,.11);  --ok-line: rgba(47,158,109,.28);
+    --warn: #b7791f; --warn-bg: rgba(183,121,31,.13); --warn-line: rgba(183,121,31,.28);
+    --bad: #d64545;  --bad-bg: rgba(214,69,69,.10);   --bad-line: rgba(214,69,69,.28);
+    /* The one accent — Linear's indigo, at full strength on white. */
+    --accent: #5e6ad2; --accent-bg: rgba(94,106,210,.09);
+    --accent-2: #7c5cd0;
+    --shadow-sm: 0 1px 2px rgba(20,22,30,.05);
+    --shadow: 0 1px 2px rgba(20,22,30,.05), 0 8px 24px -14px rgba(20,22,30,.14);
+    --shadow-lg: 0 8px 30px -12px rgba(20,22,30,.18);
+    --ring: 0 0 0 1px var(--accent), 0 0 0 4px color-mix(in srgb, var(--accent) 18%, transparent);
   }
 }
 
@@ -482,7 +491,106 @@ summary .fpath { color: var(--dim); font-size: 11.5px; overflow: hidden;
 footer { margin-top: 60px; padding-top: 22px; border-top: 1px solid var(--line-soft);
   color: var(--dim); font-size: 12px; line-height: 1.8; }
 .sessions td.n { font-family: var(--mono); color: var(--muted); }
-.sessions tr.current { background: var(--accent-bg); box-shadow: inset 2px 0 0 var(--accent); }
+.sessions tr.current { background: var(--accent-bg); box-shadow: inset 2px 0 0 var(--accent), 0 0 20px -10px var(--accent); }
+
+/* ===========================================================================
+   THE SYSTEM — 70% Linear · 20% Vercel · 10% terminal-lux.
+   Appended last so it re-skins the tokens above without touching any component's
+   structure or class name. Pure inline CSS — no web font, no network request, no
+   external stylesheet — so the export still opens offline in five years (D-014).
+   Semantics untouched: ok green, warn amber, bad red.
+
+   Reading of the three influences:
+     · Linear      — layout, density, hairline structure, one accent, the nav.
+     · Vercel      — typography: tight, high-contrast, confident weight steps.
+     · terminal-lux — reserved for the instrument surfaces (timeline, evidence,
+                      coverage, diffs): monospace, aligned columns, quiet register.
+   =========================================================================== */
+
+/* ---- Canvas: near-flat. A single whisper of light at the very top, nothing more. */
+body { font-size: 13.5px; letter-spacing: -.006em; line-height: 1.55; }
+body::before {
+  background: radial-gradient(1100px 360px at 50% -220px, color-mix(in srgb, var(--accent) 9%, transparent), transparent 70%);
+}
+.wrap { max-width: 940px; padding-left: 26px; padding-right: 26px; }
+.section { margin-top: 34px; }
+
+/* ---- Chrome (Linear): thin, quiet, a hairline underline and frosted glass. */
+.topbar {
+  background: color-mix(in srgb, var(--bg) 68%, transparent);
+  border-bottom: 1px solid var(--line-soft);
+  backdrop-filter: saturate(160%) blur(20px);
+  -webkit-backdrop-filter: saturate(160%) blur(20px);
+  margin-bottom: 26px;
+}
+.topbar .inner { padding: 12px 26px; }
+.brand { font-weight: 560; letter-spacing: -.005em; font-size: 13px; }
+.logomark { border-radius: 6px; background: linear-gradient(160deg, var(--accent), var(--accent-2)); box-shadow: none; }
+.topbar-session, .tagline { font-size: 11.5px; }
+
+/* ---- Typography (Vercel): tight, confident, few weights doing clear work. */
+h1 { font-size: 22px; font-weight: 560; letter-spacing: -.021em; }
+h2 { font-size: 10.5px; font-weight: 560; letter-spacing: .05em; color: var(--dim); }
+
+/* ---- Surfaces (Linear): defined by a hairline, not a shadow. Flat by default. */
+.panel, .card-table, details.file, .kv-grid {
+  box-shadow: none; border-color: var(--line); background-image: none;
+}
+.panel { border-radius: var(--r-lg); padding: 20px 22px; }
+details.file { border-radius: var(--r-md); }
+details.file[open] { border-color: color-mix(in srgb, var(--accent) 28%, var(--line)); box-shadow: none; }
+
+/* ---- The verdict hero: understated authority. Hairline frame, faint tonal wash,
+        tight type. The one place a sliver of colour is allowed to bloom. */
+.verdict-block {
+  padding: 24px 26px; border-radius: var(--r-xl); border-color: var(--line);
+  box-shadow: none; background: var(--surface);
+}
+.verdict-block::after { opacity: .4; }
+.verdict-block.ok   { background: linear-gradient(180deg, color-mix(in srgb, var(--ok) 6%, var(--surface)), var(--surface) 60%); }
+.verdict-block.warn { background: linear-gradient(180deg, color-mix(in srgb, var(--warn) 6%, var(--surface)), var(--surface) 60%); }
+.verdict-block.bad  { background: linear-gradient(180deg, color-mix(in srgb, var(--bad) 7%, var(--surface)), var(--surface) 60%); }
+.verdict-badge { border-radius: 9px; width: 42px; height: 42px; }
+.verdict-finding { font-size: 21px; font-weight: 560; letter-spacing: -.021em; }
+.verdict-coverage { font-size: 13px; }
+
+/* ---- Status (Vercel type on a Linear token): small, precise, bordered, no glow. */
+.status { padding: 4px 10px; font-size: 10px; font-weight: 560; letter-spacing: .045em; border-radius: 6px; }
+.dot { box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 18%, transparent); }
+
+/* ---- Navigation (Linear): inset segmented control, a single quiet active slab. */
+.tabs { padding: 3px; border-radius: 9px; background: var(--surface-2); border-color: var(--line-soft); margin: 30px 0 16px; }
+.tab { border-radius: 6px; padding: 7px 12px; font-size: 12.5px; font-weight: 510; }
+.tab:hover { background: color-mix(in srgb, var(--raised) 55%, transparent); }
+.tab[aria-selected="true"] { background: var(--raised); box-shadow: 0 1px 2px rgba(0,0,0,.14); color: var(--text); }
+.tab[aria-selected="true"] svg { color: var(--accent); opacity: 1; }
+.tab .count { background: color-mix(in srgb, var(--muted) 13%, transparent); }
+
+/* ---- Divergence card: flat, hairline, a 2px warn rail. The card is evidence,
+        so its statement stays sans; its steps go terminal (below). */
+.fact { box-shadow: none; border-radius: var(--r-md); border-left-width: 2px; }
+.fact:hover { box-shadow: none; border-color: var(--line); border-left-color: var(--warn); }
+.fact .stmt { font-size: 15px; font-weight: 560; letter-spacing: -.01em; }
+.badge { text-shadow: none; box-shadow: none; }
+.mission { box-shadow: inset 2px 0 0 var(--accent); background: var(--accent-bg); border-radius: 0 var(--r-sm) var(--r-sm) 0; }
+
+/* ---- INSTRUMENT SURFACES (terminal-lux): the timeline, evidence, coverage, diffs
+        and metadata — the audit record. Monospace, aligned numerals, muted register. */
+th { font-size: 10px; letter-spacing: .05em; background: transparent; border-bottom: 1px solid var(--line); color: var(--dim); }
+td { border-bottom: 1px solid var(--line-soft); }
+tbody tr:hover { background: color-mix(in srgb, var(--raised) 55%, transparent); }
+.card-table { border-radius: var(--r-md); }
+.tl-row.cited { box-shadow: inset 2px 0 0 var(--warn); background: var(--warn-bg); }
+.num, .tl-time, .tl-seq, .kv-v, .cov span, .ev div { font-variant-numeric: tabular-nums; }
+.cov span { border-radius: var(--r-sm); background: var(--surface-2); border-color: var(--line); }
+.kv-v { font-size: 11.5px; }
+.pill { border-radius: var(--r-sm); }
+
+/* ---- Interactions (Linear): subtle, fast, deliberate. Motion you feel, not watch. */
+a { color: var(--accent); transition: opacity .14s ease; }
+a:hover { text-decoration: none; opacity: .78; }
+.sessions tr.current { box-shadow: inset 2px 0 0 var(--accent); }
+details.file summary, .tab, tbody tr, .fact { transition: background .14s ease, border-color .14s ease; }
 `
 
 const JS = `
@@ -1054,7 +1162,7 @@ export function renderHtml(r: SessionReport, opts: HtmlOptions): string {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="dark light">
 <title>${esc(title)}</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%238b93ff'/%3E%3Cpath fill='white' d='M12 4c.35 4.2 3.4 7.25 7.6 7.6-4.2.35-7.25 3.4-7.6 7.6-.35-4.2-3.4-7.25-7.6-7.6C8.6 11.25 11.65 8.2 12 4Z'/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%235e6ad2'/%3E%3Cpath fill='white' d='M12 4c.35 4.2 3.4 7.25 7.6 7.6-4.2.35-7.25 3.4-7.6 7.6-.35-4.2-3.4-7.25-7.6-7.6C8.6 11.25 11.65 8.2 12 4Z'/%3E%3C/svg%3E">
 <style>${CSS}</style>
 </head>
 <body>

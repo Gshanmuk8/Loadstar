@@ -451,6 +451,20 @@ Learn more:  https://lodestar.dev
 
 **That is the whole CLI.** Five commands.
 
+### Added since, each by decision (D-012's rule)
+
+| Command | Purpose | Decision |
+|---------|---------|----------|
+| `lodestar graph` | The organizational evidence graph (V1) | D-062 |
+| `lodestar replay [n]` | One session's full ordered timeline, from the evidence | D-073 |
+| `lodestar explain [n]` | Why each reported fact is believed — evidence expanded, assumptions inline | D-073 |
+| `lodestar memory` | What happened before: session digest + declared claims from the graph | D-073 |
+
+`lodestar run --mission "…" <agent>` records the human's stated intent with the
+session (declared tier; facts never compute from it). The flag is read only before
+the agent name — the agent's own argv is never inspected (D-073). Open sessions
+whose wrapper died are shown as **interrupted**, never "running" forever (D-074).
+
 ### Deferred
 
 | Command | Why it waits |

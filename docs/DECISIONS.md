@@ -2576,6 +2576,143 @@ logic that has already had one command-injection bug is how the next one ships).
 
 ---
 
+## D-073 — The local Explain layer: `replay`, `explain`, `memory`, and the mission flag ✅
+
+**Context.** The founder directed a V1 completion pass whose feature list named a
+replay system, richer explain reports, a memory layer, and three new CLI commands.
+Parts of that list collide with settled decisions — risk display (D-005), model
+summaries (banned), user/workspace tables (out until V2 signatures, D-062/D-067) —
+and this entry records the compliant shape that was built instead, under D-012's rule
+that every new command costs an entry here.
+
+**Decision.** Three commands and one flag, all renderers over existing models — no
+new judgment code, no new storage, no new trust claims:
+
+- **`lodestar replay [n]`** — the full ordered timeline of one session (every event,
+  chain order, occurrence times), files changed, outcome, integrity. This is the
+  timeline D-006 said covers the replay need; deterministic re-execution stays
+  demoted, and WHAT-REMAINS' deletion of replay-as-product stands — this is a
+  *view of the record*, not a runtime.
+- **`lodestar explain [n]`** — "why do you believe that?": the declared fact catalog
+  (checked vs. found, D-048), each fact's evidence expanded to full events, its
+  assumptions inline (D-057/D-058), limitations, measured command coverage. Local,
+  deterministic explain only; a BROKEN record refuses explanation outright.
+- **`lodestar memory`** — "what happened before": a digest of every session (mission,
+  outcome, divergences, integrity) plus the declared claims in the project's graph,
+  when one exists. **A view, never a store** — the ledger and graph ARE the memory;
+  writing to it is `lodestar claude` and `lodestar graph link`. Never fed back to an
+  agent (the do-not-build list's first line), never summarized by a model
+  (V1-DESIGN §0.6).
+- **`lodestar run --mission "…" <agent>`** — the human's stated intent, captured
+  declared-tier (`mission.stated`, intent — facts must never compute from it),
+  redacted at the boundary (D-042), rendered in every session view. Consumed only
+  BEFORE the agent name; the agent's own argv is never inspected (the wedge rule).
+  `LODESTAR_MISSION` covers the sugar form, whose argv belongs wholly to the agent.
+
+New model fields, computed once in `facts/report.ts` and rendered everywhere
+(D-049): `commands` (the process.exit subset), `outcome` (from the chained
+`session.end`, never the mutable table — D-030's reasoning), `catalog`. Shared
+terminal sections live in `src/cli/render.ts` so report/replay/explain cannot word
+one judgment two ways. Lists cap at 20 with the drop count stated.
+
+**Deliberately not built, with the decision that forbids each:** risk levels in
+reports (D-005 — computed signals stay stored, never displayed); AI-generated
+session summaries (banned list; agent-reporting-on-itself); `users`/`workspaces`/
+`policies` tables (V1 has no authenticated person identity — D-062, V1-DESIGN §5.2;
+teams share evidence via `graph sync`, D-067); replay-as-re-execution (D-006).
+
+---
+
+## D-074 — Session lifecycle: the wrapper outlives signals; open ≠ running ✅
+
+**Context.** Two lifecycle holes, one field-reported ("reports remain running
+forever"), one found by inspection:
+
+1. A terminal Ctrl-C is delivered to the whole foreground process group — the agent
+   AND the wrapper. The wrapper's default SIGINT handling killed it before
+   `recorder.stop()` ran, so an interrupted session never got its `session.end`,
+   stayed open in the table, and `sessions` said "running" about it forever. Worse,
+   agents that treat SIGINT as "cancel current action" (Claude Code does) kept
+   running while their recorder silently died mid-session.
+2. Nothing distinguished "open because running" from "open because the wrapper was
+   killed" — not even in principle, since nothing recorded who the wrapper was.
+
+**Decision.**
+
+- **The wrapper ignores SIGINT/SIGTERM/SIGHUP while the agent runs and while the
+  session closes.** The agent still receives its own copy from the terminal, so its
+  behavior is byte-identical with and without LODESTAR (the wedge rule); whichever
+  way it responds, `proc.run` resolves and the session seals honestly — exit code,
+  or 128+signal (D-030).
+- **Schema v2: `sessions.wrapper_pid`** (the first migration; column-presence
+  checked directly, because a column either exists or it does not). Migrations touch
+  the mutable sessions table only — the events table is append-only and hash-chained,
+  and a migration that rewrote it would be indistinguishable from tampering.
+- **Open sessions resolve at read time to `running` / `interrupted` / `unknown`**
+  (pre-v2 rows), via a PID liveness probe in the CLI — labelled a heuristic (PIDs are
+  reused), never written back, never in the record or the report model
+  (reports stay deterministic functions of the record; this is out-of-band narration,
+  the same class as D-066's index-freshness notes). No retroactive `ended_at` is ever
+  invented: the record ends where it ends, and everything after its last event is
+  honestly unobserved (`outcome: not-closed`).
+
+**Rejected:** forwarding signals to the child manually (it already gets them; a
+second delivery changes agent behavior); marking interrupted sessions closed in the
+table (fabricates an end time nobody observed); a wrapper heartbeat file (more
+machinery for the same answer the PID probe gives).
+
+---
+
+## D-075 — A shim never resolves into ANY shim directory ✅
+
+**Context.** Found by dogfooding V1 under V0: running `lodestar run` inside a
+terminal that was itself under `lodestar claude` put TWO shim dirs on PATH. Each
+shim excluded only its OWN directory when resolving "the real binary" (D-026's
+fork-bomb guard), so the inner `npm` shim resolved the outer `npm` shim, which
+resolved the inner one back — one spawned process and one depth level per bounce
+until the recursion guard (MAX_SHIM_DEPTH) refused the command at depth 13. The
+agent's `npm test` then failed *because* LODESTAR was watching, twice over: the
+command broke under the wrapper and worked without it, and the refusal's non-zero
+exit propagated into the parent's groundTruth record (the exact false-accusation
+shape D-039 documents).
+
+**Decision.** `resolveOnPath` skips every PATH entry matching the shim-dir shape
+(`*/.lodestar/shims` — the baked install location, D-026), unconditionally. A shim
+is never "the real binary" for anyone. `excludeDir` stays for callers whose shim
+dir does not match the shape (tests). The recursion guard stays too — it is the
+backstop for the shapes this rule cannot see, and it did its job here: it turned an
+unbounded ping-pong into a loud, bounded refusal.
+
+**Rejected:** resetting `LODESTAR_SHIM_DEPTH` at session start (treats the symptom;
+the ping-pong itself burned a process per bounce and polluted the ledger with
+phantom spawn/exit pairs); enumerating other sessions' shim dirs via env (an outer
+session's env var names ONE dir; the shape names them all).
+
+---
+
+## D-076 — `FsRecorder.stop()` out-waits the stability window ✅
+
+**Context.** The primary signal was silently missing the agent's final edits. The
+watcher's `awaitWriteFinish` (needed so half-written files are not snapshotted)
+holds a write event until the file has been stable for 120 ms — and `stop()` closed
+the watcher immediately, dropping everything still inside the window. An agent that
+writes `auth.ts` and exits — the most ordinary ending a session has — lost the
+write. Measured live: git counted 5 uncommitted files while the record said one file
+changed; deletes survived (unlink bypasses the window), which made the gap read as
+selective rather than systematic.
+
+**Decision.** `stop()` waits `stabilityThreshold + 2·pollInterval + slack`
+(~300 ms) before closing the watcher, letting the window drain. The session end
+moves by a quarter-second; the record stops missing the agent's last save. Pinned by
+a test that writes a file and immediately stops.
+
+**Rejected:** shrinking the stability window (re-opens the half-written-file
+problem the window exists for); a full rescan at stop (O(repo) work per session end
+to catch a 300 ms race); trusting git's dirty list to backfill fs events (different
+signal, different evidence class — the floor must observe, not infer).
+
+---
+
 ## D-011 — Product location ⏸
 
 LODESTAR lives at `Desktop/Loadstar/LODESTAR`, a sibling of `claude-workspace` rather

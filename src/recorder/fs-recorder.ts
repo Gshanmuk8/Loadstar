@@ -36,6 +36,24 @@ export interface BaselineResult {
   truncated: boolean
 }
 
+/**
+ * Editors and compilers write in chunks; without a stability window we snapshot a
+ * half-written file and report a change that never really existed in that form.
+ * Named here because `stop()` must out-wait it — see the comment there.
+ */
+const AWAIT_WRITE = { stabilityThreshold: 120, pollInterval: 20 }
+
+/**
+ * How long `stop()` lets the stability window drain before closing (D-076).
+ *
+ * The window plus two polls plus scheduling slack. Measured failure without it: an
+ * agent that writes `auth.ts` and exits — the most ordinary ending a session has —
+ * lost the write, because the event was still inside `awaitWriteFinish` when the
+ * wrapper closed the watcher. Git saw 5 uncommitted files while the record said one
+ * file changed; the primary signal was silently missing the agent's final edits.
+ */
+const STOP_GRACE_MS = AWAIT_WRITE.stabilityThreshold + AWAIT_WRITE.pollInterval * 2 + 140
+
 export class FsRecorder {
   private watcher: FSWatcher | null = null
   private readonly known = new Map<string, FileSnapshot>()
@@ -55,9 +73,7 @@ export class FsRecorder {
       ignored: makeIgnoreMatcher(this.opts.root, this.opts.ignore),
       ignoreInitial: false,
       persistent: true,
-      // Editors and compilers write in chunks. Without this we snapshot a half-written
-      // file and report a change that never really existed in that form.
-      awaitWriteFinish: { stabilityThreshold: 120, pollInterval: 20 },
+      awaitWriteFinish: AWAIT_WRITE,
     })
     this.watcher = watcher
 
@@ -75,6 +91,11 @@ export class FsRecorder {
   }
 
   async stop(): Promise<void> {
+    // A write in the agent's last STOP_GRACE_MS is still inside the stability window;
+    // closing the watcher now would drop it, and the session's final edits are the
+    // ones a reader most needs. A fixed, short wait: the session end moves by a
+    // quarter-second; the record stops missing the agent's last save (D-076).
+    if (this.watcher) await new Promise((res) => setTimeout(res, STOP_GRACE_MS))
     await this.watcher?.close()
     this.watcher = null
   }

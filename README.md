@@ -183,6 +183,16 @@ lodestar report            # a human at a terminal → opens the dashboard
 lodestar report --terminal # or piped/CI → terminal report, exit 2 if BROKEN
 lodestar report --html     # a self-contained file you can send to anyone
 lodestar report --record   # the canonical evidence record itself, as verifiable JSON
+
+lodestar replay            # the full ordered timeline of a session, from the evidence
+lodestar explain           # why each reported fact is believed — evidence expanded
+lodestar memory            # what happened before: sessions + declared claims (D-073)
+```
+
+Declare what you asked for, and it travels with the record:
+
+```bash
+lodestar run --mission "refactor auth" claude
 ```
 
 Six panes, one model: **Reality Facts** and **Limitations** lead the page; then

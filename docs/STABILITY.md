@@ -54,7 +54,7 @@ Execution Boundary → Observation → Evidence → Evidence Record → Verifica
 | `RuntimeAdapter` + `AdapterCapabilities` | `src/adapters/registry.ts` | The vendor-neutrality boundary. New capabilities: additive booleans. A runtime is one entry here and nothing else, or independence is already broken. |
 | `evaluate`/`evaluateEvents`, `limitations`/`limitationsEvents`, `interference`/`interferenceEvents`, `FACT_CATALOG` | `src/facts/index.ts` | The engine's public face. The groundTruth gate at every entry is load-bearing (D-009) — no future entry point may skip it. |
 | `CommandCoverage` / `ShimStatus` | `src/recorder/shims.ts` | Serialized into records (`evidence.coverage`); statuses are a closed set of four (D-040). |
-| CLI surface: five commands + `report` flags (`--terminal`, `--html`, `--record`, `--open`), exit codes (`2` = BROKEN) | `src/cli/` | Five commands is a rule (D-012). Flags are additive. Exit-code meanings are contracts for CI. |
+| CLI surface: five commands + `graph` (D-062) + `replay`/`explain`/`memory` (D-073), `report` flags (`--terminal`, `--html`, `--record`, `--open`), `run --mission`, exit codes (`2` = BROKEN) | `src/cli/` | Every command past five costs a DECISIONS entry (D-012). Flags are additive. Exit-code meanings are contracts for CI. |
 | `serializeRecord`, `recordScriptTag`, `RECORD_HTML_MARKER_ID` | `src/record/serialize.ts` | The embed marker is spec-pinned (§7); treat as frozen in practice. |
 
 ## INTERNAL — change freely

@@ -340,6 +340,21 @@ export interface Verdict {
   coverage: { text: string; tone: Exclude<VerdictTone, 'bad'> } | null
 }
 
+/**
+ * How the session ended — read from the chained `session.end` event, never from the
+ * mutable sessions table. The table's `exitCode` is framing; the event is evidence.
+ *
+ * `killed` is `session.end` present with a null exit code: the child was terminated by
+ * a signal, and inventing a number for it is the exact lie D-030 removed from the
+ * wrapper. `not-closed` is no `session.end` at all — still running, or the wrapper died.
+ */
+export interface Outcome {
+  state: 'exited' | 'killed' | 'not-closed'
+  exitCode: number | null
+  /** The sentence every renderer prints. Worded here, once. */
+  text: string
+}
+
 export interface SessionReport {
   session: Session
   /**
@@ -386,6 +401,20 @@ export interface SessionReport {
   /** Recorder failures, from the record itself. Holes we know about. */
   recorderErrors: string[]
   timeline: TimelineEntry[]
+  /**
+   * Every completed command observed at the execution boundary (`process.exit`
+   * events), in order — the same entries the timeline carries, pre-selected so the
+   * three renderers cannot pick three different subsets (D-049).
+   */
+  commands: TimelineEntry[]
+  /** How the session ended, from the chained `session.end` event. See `Outcome`. */
+  outcome: Outcome
+  /**
+   * The fact ids this record's generator declared it evaluates
+   * (`record.evidence.catalog`). What was CHECKED — read it beside `facts`, which is
+   * what was FOUND; the difference is the honest-coverage story (D-048).
+   */
+  catalog: string[]
   /** Every file the session touched, with the model's verdict on whether a diff exists. */
   changes: FileChange[]
   git: GitView
@@ -487,7 +516,7 @@ function summarize(e: LodestarEvent, cwd = ''): string {
  * means — that is the reader's job, and it is the only reason they can trust the rest.
  * See `FactView`.
  */
-const FACT_TITLES: Record<RealityFact['id'], string> = {
+export const FACT_TITLES: Record<RealityFact['id'], string> = {
   'RF-01': 'Command failed',
   'RF-02': 'Uncommitted work left behind',
   'RF-03': 'No test command observed',
@@ -879,6 +908,40 @@ export function reportFromRecord(record: EvidenceRecord, opts: BuildOptions = {}
     }
   }
 
+  const timeline: TimelineEntry[] = events.map((e) => ({
+    eventId: e.id,
+    seq: e.seq,
+    ts: e.ts,
+    kind: e.kind,
+    summary: summarize(e, session.cwd),
+    cited: cited.has(e.id),
+    tier: e.signalTier,
+  }))
+
+  // The ending, from the chained event. `session.exitCode` (the table) is framing and
+  // must not be the source of a rendered claim — the event is what the chain protects.
+  const endEvent = events.find((e) => e.kind === 'session.end')
+  const endExit = endEvent
+    ? ((endEvent.payload as { exitCode?: number | null }).exitCode ?? null)
+    : null
+  const outcome: Outcome = !endEvent
+    ? {
+        state: 'not-closed',
+        exitCode: null,
+        text: 'no session end was recorded — the session is still running, or the wrapper did not close it',
+      }
+    : endExit === null
+      ? {
+          state: 'killed',
+          exitCode: null,
+          text: 'the agent was killed by a signal; no exit code exists',
+        }
+      : {
+          state: 'exited',
+          exitCode: endExit,
+          text: `the agent exited with code ${endExit}`,
+        }
+
   return {
     session,
     recordId: record.recordId,
@@ -896,15 +959,10 @@ export function reportFromRecord(record: EvidenceRecord, opts: BuildOptions = {}
     recorderErrors,
     changes: changesFromRecord(groundTruth, session.cwd, opts.snapshots),
     git: gitFromRecord(groundTruth),
-    timeline: events.map((e) => ({
-      eventId: e.id,
-      seq: e.seq,
-      ts: e.ts,
-      kind: e.kind,
-      summary: summarize(e, session.cwd),
-      cited: cited.has(e.id),
-      tier: e.signalTier,
-    })),
+    timeline,
+    commands: timeline.filter((e) => e.kind === 'process.exit'),
+    outcome,
+    catalog: [...record.evidence.catalog],
     counts: {
       events: events.length,
       commands: events.filter((e) => e.kind === 'process.exit').length,

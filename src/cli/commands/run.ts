@@ -67,9 +67,18 @@ function adapterFor(command: string): RuntimeAdapter {
   )
 }
 
-export async function cmdRun(command: string, args: string[]): Promise<number> {
+export interface RunOptions {
+  /** The human's stated intent, from `run --mission`. Declared, never inferred. */
+  mission?: string | null
+}
+
+export async function cmdRun(command: string, args: string[], opts: RunOptions = {}): Promise<number> {
   const root = findProjectRoot()
   if (!root) return requireProject()
+
+  // The flag wins; the environment variable is the fallback that also serves the sugar
+  // form (`lodestar claude`), whose argv belongs entirely to the agent (D-073).
+  const mission = opts.mission ?? process.env['LODESTAR_MISSION'] ?? null
 
   const adapter = adapterFor(command)
 
@@ -89,6 +98,7 @@ export async function cmdRun(command: string, args: string[]): Promise<number> {
   const recorder = new Recorder({
     root,
     runtimeId: adapter.id,
+    mission,
     argv: args,
     capabilities: adapter.capabilities,
     shims: config.recording,
@@ -112,6 +122,21 @@ export async function cmdRun(command: string, args: string[]): Promise<number> {
   }
 
   // ---- run the agent -------------------------------------------------------
+  //
+  // The wrapper must OUTLIVE the agent's signals (D-074). A terminal Ctrl-C is
+  // delivered to the whole foreground process group — the agent AND this wrapper.
+  // What the agent does with it is its own business (Claude Code treats SIGINT as
+  // "cancel" and keeps running; a build dies with it). The wrapper's default was to
+  // die on the spot, before `recorder.stop()` could run — so every interrupted
+  // session stayed open forever and `session.end` never entered the chain. Ignoring
+  // the signal here changes nothing for the agent: it still receives its own copy
+  // from the terminal, and whichever way it responds, `proc.run` resolves and the
+  // session closes honestly (exit code, or 128+signal below).
+  const survive = (): void => {}
+  process.on('SIGINT', survive)
+  process.on('SIGTERM', survive)
+  process.on('SIGHUP', survive)
+
   let exitCode: number | null = null
   let signal: string | null = null
   try {
@@ -129,6 +154,9 @@ export async function cmdRun(command: string, args: string[]): Promise<number> {
   }
 
   // ---- close the session ---------------------------------------------------
+  // Still under the signal guard: a second Ctrl-C landing while the session is being
+  // sealed must not orphan it — closing takes milliseconds, and dying inside it is
+  // the exact failure the guard exists to remove.
   if (started) {
     try {
       const summary = await recorder.stop(exitCode)
@@ -138,6 +166,9 @@ export async function cmdRun(command: string, args: string[]): Promise<number> {
       errOut(dim('  Events recorded before the failure are still in the record.'))
     }
   }
+  process.removeListener('SIGINT', survive)
+  process.removeListener('SIGTERM', survive)
+  process.removeListener('SIGHUP', survive)
 
   // The agent's exit code is the wrapper's exit code. Always. Scripts wrap agents, and
   // a wrapper that invents its own status breaks every one of them.

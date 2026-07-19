@@ -151,6 +151,9 @@ export class Recorder {
       runtimeId: this.opts.runtimeId,
       cwd: this.opts.root,
       mission: this.opts.mission ? redactText(this.opts.mission).value : null,
+      // For read-time liveness (D-074): if this process dies without closing the
+      // session, `sessions`/`status` can tell "still running" from "interrupted".
+      wrapperPid: process.pid,
     })
 
     this.context = new RecordingContext(this.store, this.session.id, this.opts.root, {

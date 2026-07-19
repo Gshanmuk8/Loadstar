@@ -90,8 +90,33 @@ export interface ResolveOptions {
    * execution can disagree about what ran.
    */
   env?: NodeJS.ProcessEnv
-  /** A directory to skip. The shim uses this to avoid resolving back into itself. */
+  /**
+   * A directory to skip. The shim uses this to avoid resolving back into itself.
+   * Kept alongside the unconditional shim-shape skip below because tests (and any
+   * future caller) may install shims somewhere that does not match the shape.
+   */
   excludeDir?: string
+}
+
+/**
+ * Any LODESTAR shim directory — this session's or ANOTHER session's (D-075).
+ *
+ * Shims always live at `<project>/.lodestar/shims` (the baked-in dir, D-026), so the
+ * shape identifies them all. Excluding only our own directory was not enough: when a
+ * session runs inside another session (`lodestar claude` wrapping a terminal in which
+ * someone runs `lodestar run …` — dogfooding does exactly this), BOTH shim dirs are on
+ * PATH. The inner shim excluded itself and resolved "the real npm" to the OUTER shim,
+ * which excluded itself and resolved back to the INNER one — a ping-pong that burned
+ * one process and one depth level per bounce until the recursion guard refused the
+ * command at depth 13. The agent's command then failed under LODESTAR and worked
+ * without it, which is the one asymmetry the wedge cannot afford.
+ *
+ * A shim is never "the real binary" for anyone, so the skip is unconditional.
+ */
+const SHIM_DIR_SHAPE = /\/\.lodestar\/shims$/
+
+function isShimDir(normalizedDir: string): boolean {
+  return SHIM_DIR_SHAPE.test(normalizedDir)
 }
 
 /**
@@ -122,7 +147,9 @@ export function resolveOnPath(command: string, opts: ResolveOptions = {}): strin
   const exclude = opts.excludeDir ? norm(opts.excludeDir) : null
   for (const dir of (envLookup(env, 'PATH') ?? '').split(delimiter)) {
     if (!dir) continue
-    if (exclude && norm(dir) === exclude) continue // never resolve back into the shim
+    const nd = norm(dir)
+    if (exclude && nd === exclude) continue // never resolve back into the shim
+    if (isShimDir(nd)) continue // …and never into ANY shim dir — see SHIM_DIR_SHAPE
     for (const ext of exts) {
       const candidate = join(dir, command + ext.toLowerCase())
       if (isExecutableFile(candidate)) return candidate

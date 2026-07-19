@@ -359,6 +359,15 @@ export interface Session {
   endedAt?: string | null
   exitCode?: number | null
   cwd: string
+  /**
+   * The wrapper process that owns this session, while it lives (D-074).
+   *
+   * Read-time affordance only: an open session whose wrapper is gone is shown as
+   * interrupted instead of "running" forever. Framing, like everything on this row —
+   * it never enters the Evidence Record, and a PID can be reused, so liveness is a
+   * labelled heuristic, not evidence.
+   */
+  wrapperPid?: number | null
 }
 
 /**
